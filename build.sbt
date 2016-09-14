@@ -80,6 +80,7 @@ lazy val engine = (project in file("engine"))
 
 lazy val root = (project in file("."))
   .settings(rootSettings: _*)
+  .enablePlugins(Cinnamon)
   .enablePlugins(DockerPlugin)
   .withTestSettings
   // Full list of all sub-projects to build with the root (ex: include in `sbt test`)
