@@ -15,7 +15,8 @@ object Settings {
     Resolver.jcenterRepo,
     "Broad Artifactory Releases" at "https://artifactory.broadinstitute.org/artifactory/libs-release/",
     "Broad Artifactory Snapshots" at "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/",
-    "takipi-sdk" at "https://dl.bintray.com/takipi/maven"
+    "takipi-sdk" at "https://dl.bintray.com/takipi/maven",
+    "com-mvn" at "https://repo.lightbend.com/commercial-releases/"
   )
 
   /*
@@ -102,8 +103,9 @@ object Settings {
     parallelExecution := false,
     cinnamon in run := true,
     cinnamon in test := true,
-    cinnamonLogLevel := "INFO",
+    cinnamonLogLevel := "DEBUG",
     fork in run := true,
+    javaOptions in run += "-Dconfig.file=/cromwell/mockJes.conf",
     javaOptions in run += "-agentlib:TakipiAgent"
   )
 

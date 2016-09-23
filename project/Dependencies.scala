@@ -112,6 +112,7 @@ object Dependencies {
     "com.typesafe.akka" %% "akka-actor" % akkaV,
     "com.typesafe.akka" %% "akka-slf4j" % akkaV,
     "com.typesafe.akka" %% "akka-testkit" % akkaV % Test,
+    Cinnamon.library.cinnamonCHMetrics,
     Cinnamon.library.cinnamonAkka,
     "com.lightbend.cinnamon" %% "cinnamon-takipi" % "2.0.0"
   ) ++ baseDependencies ++ googleApiClientDependencies ++
