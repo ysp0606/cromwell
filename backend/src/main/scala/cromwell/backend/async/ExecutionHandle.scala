@@ -25,6 +25,7 @@ final case class FailedNonRetryableExecutionHandle(throwable: Throwable, returnC
 }
 
 final case class FailedRetryableExecutionHandle(throwable: Throwable, returnCode: Option[Int] = None) extends ExecutionHandle {
+  println("WTF I AM HERE!!!!! " + Thread.dumpStack())
   override val isDone = true
   override val result = RetryableExecution(throwable, returnCode)
 }
