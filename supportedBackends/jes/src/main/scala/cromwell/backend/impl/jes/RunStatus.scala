@@ -2,7 +2,7 @@ package cromwell.backend.impl.jes
 
 import java.nio.file.Path
 
-import cromwell.backend.impl.jes.errors.JesError
+import cromwell.backend.impl.jes.errors.KnownJesError$
 import cromwell.core.ExecutionEvent
 
 sealed trait RunStatus {
@@ -30,18 +30,24 @@ object RunStatus {
     override def toString = "Success"
   }
 
-  final case class Failed(errorCode: Int, errorMessage: Option[String], eventList: Seq[ExecutionEvent], machineType: Option[String], zone: Option[String], instanceName: Option[String])
-    extends TerminalRunStatus {
-    
-    private def unknownError(jobTag: String) = {
-      new RuntimeException(s"Task $jobTag failed: error code $errorCode. Message: $errorMessage")
-    }
-    
+  final case class Failed(errorCode: Int,
+                          errorMessage: Option[String],
+                          eventList: Seq[ExecutionEvent],
+                          machineType: Option[String],
+                          zone: Option[String],
+                          instanceName: Option[String]) extends TerminalRunStatus {
     // Don't want to include errorMessage or code in the snappy status toString:
     override def toString = "Failed"
-    
-    def toFailure(jobTag: String, stderrPath: Option[Path]): Exception = {
-      JesError.fromFailedStatus(this, jobTag, stderrPath) getOrElse unknownError(jobTag)
+    def toJesError: Option[KnownJesError] = KnownJesError.fromFailedStatus(this)
+
+    def toException(jobTag: String, stderrPath: Option[Path]): Exception = {
+      toJesError map { _.toException(errorMessage.getOrElse(""), jobTag, stderrPath) } getOrElse unknownError(jobTag)
+    }
+
+    private def unknownError(jobTag: String): RuntimeException = {
+      val baseMessage = s"Task $jobTag failed: error code $errorCode."
+      val message = errorMessage map { e => s"$baseMessage Message: $e" } getOrElse baseMessage
+      new RuntimeException(message)
     }
   }
 }
