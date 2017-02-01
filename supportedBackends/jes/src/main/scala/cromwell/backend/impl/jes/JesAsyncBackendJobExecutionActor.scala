@@ -10,6 +10,7 @@ import com.google.cloud.storage.contrib.nio.CloudStoragePath
 import cromwell.backend._
 import cromwell.backend.async.{AbortedExecutionHandle, ExecutionHandle, FailedNonRetryableExecutionHandle, FailedRetryableExecutionHandle, PendingExecutionHandle, SuccessfulExecutionHandle}
 import cromwell.backend.impl.jes.RunStatus.{Failed, TerminalRunStatus}
+import cromwell.backend.impl.jes.errors.JesError
 import cromwell.backend.impl.jes.io._
 import cromwell.backend.impl.jes.statuspolling.JesPollingActorClient
 import cromwell.backend.standard.{StandardAsyncExecutionActor, StandardAsyncExecutionActorParams, StandardAsyncJob}
@@ -428,42 +429,49 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
                                       returnCode: Option[Int]): ExecutionHandle = {
     import lenthall.numeric.IntegerUtil._
 
-    val failed: RunStatus.Failed = runStatus match {
+    val runStatus: RunStatus.Failed = runStatus match {
       case failedStatus: RunStatus.Failed => failedStatus
       case unknown => throw new RuntimeException(s"handleExecutionFailure not called with RunStatus.Failed. Instead got $unknown")
     }
 
-    val jesError = failed.toJesError
+    val jesError = JesError.fromFailedStatus(runStatus)
 
     // In the event that the error isn't caught by the special cases, this will be used
-    def nonRetryableException: FailedNonRetryableExecutionHandle = {
-      val exception = jesError.map(_.toException(failed.errorMessage, jobPaths.jobKey.tag, Option(jobPaths.stderr))
-      FailedNonRetryableExecutionHandle(exception, returnCode)
-    }
+//    def nonRetryableException: FailedNonRetryableExecutionHandle = {
+//      val exception = jesError.map(_.toException(failed.errorMessage, jobPaths.jobKey.tag, Option(jobPaths.stderr))
+//      FailedNonRetryableExecutionHandle(exception, returnCode)
+//    }
     
-    val errorCode = failed.errorCode
-    val taskName = s"${workflowDescriptor.id}:${call.unqualifiedName}"
-    val attempt = jobDescriptor.key.attempt
+//    val errorCode = failed.errorCode
+//    val taskName = s"${workflowDescriptor.id}:${call.unqualifiedName}"
+//    val attempt = jobDescriptor.key.attempt
 
-    failed.errorMessage match {
-      case Some(e) if e.contains("Operation cancelled at") => AbortedExecutionHandle // Can we encode abort some other way?
-      case Some(e) if errorCode == 10 => ???
-      case Some(errorMessage) if preempted(errorCode, errorMessage) =>
-          val preemptedMsg = s"Task $taskName was preempted for the ${attempt.toOrdinal} time."
-          if (attempt < maxPreemption) {
-            val e = PreemptedException(
-              s"""$preemptedMsg The call will be restarted with another preemptible VM (max preemptible attempts number is $maxPreemption).
-                 |Error code $errorCode. Message: $errorMessage""".stripMargin
-            )
-            FailedRetryableExecutionHandle(e, returnCode)
-          } else {
-            val e = PreemptedException(
-              s"""$preemptedMsg The maximum number of preemptible attempts ($maxPreemption) has been reached. The call will be restarted with a non-preemptible VM.
-                 |Error code $errorCode. Message: $errorMessage)""".stripMargin)
-            FailedRetryableExecutionHandle(e, returnCode)
-          }
-      case _ => nonRetryableException
+    jesError match {
+        // FIXME: handle preemption & nonpreemption
+        // FIXME: get - that thing is an option, should we just have the message in the JesError?
+      case other => other.toExecutionHandle(runStatus.errorMessage.get, returnCode, jobPaths.jobKey.tag, Option(jobPaths.stderr))
     }
+
+
+//    failed.errorMessage match {
+//      case Some(e) if e.contains("Operation cancelled at") => AbortedExecutionHandle // Can we encode abort some other way?
+//      case Some(e) if errorCode == 10 => ???
+//      case Some(errorMessage) if preempted(errorCode, errorMessage) =>
+//          val preemptedMsg = s"Task $taskName was preempted for the ${attempt.toOrdinal} time."
+//          if (attempt < maxPreemption) {
+//            val e = PreemptedException(
+//              s"""$preemptedMsg The call will be restarted with another preemptible VM (max preemptible attempts number is $maxPreemption).
+//                 |Error code $errorCode. Message: $errorMessage""".stripMargin
+//            )
+//            FailedRetryableExecutionHandle(e, returnCode)
+//          } else {
+//            val e = PreemptedException(
+//              s"""$preemptedMsg The maximum number of preemptible attempts ($maxPreemption) has been reached. The call will be restarted with a non-preemptible VM.
+//                 |Error code $errorCode. Message: $errorMessage)""".stripMargin)
+//            FailedRetryableExecutionHandle(e, returnCode)
+//          }
+//      case _ => nonRetryableException
+//    }
   }
 
   // TODO: Adapter for left over test code. Not used by main.
