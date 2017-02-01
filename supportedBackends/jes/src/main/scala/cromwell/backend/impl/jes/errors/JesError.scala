@@ -60,12 +60,14 @@ sealed abstract class KnownJesError(val errorCode: Int, val JesCode: Option[Int]
   def toException(message: String, jobTag: String, stderrPath: Option[Path]): Exception = {
     this match {
       case FailedToDelocalize => FailedToDelocalizeFailure(message, jobTag, stderrPath)
+      case Aborted => ???
       case _ => StandardException(errorCode, message, jobTag)
     }
   }
 }
 
 private case object InvalidValue extends KnownJesError(3, None)
+private case object Aborted extends KnownJesError(5, None)
 private case object NoMachinesAvailable extends KnownJesError(5, None)
 private case object FailedToPullImage extends KnownJesError(5, Option(8))
 private case object FailedToLocalize extends KnownJesError(5, Option(9))
