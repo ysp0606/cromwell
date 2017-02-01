@@ -446,7 +446,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     val attempt = jobDescriptor.key.attempt
 
     failed.errorMessage match {
-      case Some(e) if e.contains("Operation cancelled at") => AbortedExecutionHandle
+      case Some(e) if e.contains("Operation cancelled at") => AbortedExecutionHandle // Can we encode abort some other way?
       case Some(e) if errorCode == 10 => ???
       case Some(errorMessage) if preempted(errorCode, errorMessage) =>
           val preemptedMsg = s"Task $taskName was preempted for the ${attempt.toOrdinal} time."

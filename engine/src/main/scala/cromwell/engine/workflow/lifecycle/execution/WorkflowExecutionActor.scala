@@ -285,7 +285,7 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
   private def handleRetryableFailure(jobKey: BackendJobDescriptorKey, reason: Throwable, returnCode: Option[Int]) = {
     val newJobKey = jobKey.copy(attempt = jobKey.attempt + 1)
     workflowLogger.info(s"Retrying job execution for ${newJobKey.tag}")
-    /*  Currently, we update the status of the old key to Preempted, and add a new entry (with the #attempts incremented by 1)
+    /*  Currently, we update the status of the old key to RetryableFailure, and add a new entry (with the #attempts incremented by 1)
       * to the execution store with status as NotStarted. This allows startRunnableCalls to re-execute this job */
     val executionDiff = WorkflowExecutionDiff(Map(jobKey -> ExecutionStatus.RetryableFailure, newJobKey -> ExecutionStatus.NotStarted))
     val newData = stateData.mergeExecutionDiff(executionDiff).removeCallExecutionActor(jobKey)

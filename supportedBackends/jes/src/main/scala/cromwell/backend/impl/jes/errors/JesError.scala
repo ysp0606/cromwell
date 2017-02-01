@@ -54,8 +54,8 @@ final case class UnknownJesError(errorCode: Int) extends JesError {
 }
 
 // FIXME - I made the inner an option - fix isMatch & ADTize?
-sealed abstract class KnownJesError(val errorCode: Int, val innerCode: Option[Int]) extends JesError {
-  def isMatch(otherOuterCode: Int, otherInnerCode: Int): Boolean = (errorCode == otherOuterCode) && (innerCode == otherInnerCode)
+sealed abstract class KnownJesError(val errorCode: Int, val JesCode: Option[Int]) extends JesError {
+  def isMatch(otherErrorCode: Int, otherJesCode: Int): Boolean = (errorCode == otherErrorCode) && (JesCode == otherJesCode)
 
   def toException(message: String, jobTag: String, stderrPath: Option[Path]): Exception = {
     this match {
