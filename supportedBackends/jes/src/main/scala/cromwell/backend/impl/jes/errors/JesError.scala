@@ -29,6 +29,22 @@ object JesError {
   }
 }
 
+/**
+  * FIXME:
+  *
+  * errorMessage is an option, but all known errors have one
+  * jes code is an option
+  * return code is an option
+  *
+  * error message needs to be able to be changed, even when Some
+  *
+  * do we care about stripping out the numeric code for the known errors which have one? i don't think so, so far
+  * only the delocalizer is doing that. who cares.
+  *
+  * can have top level function to do the prettifying for "Message: ..." in the Some cases for error message
+  *
+  */
+
 sealed abstract class JesError {
   def errorCode: Int
   def toExecutionHandle(message: String, jobReturnCode: Option[Int], jobTag: String, stderrPath: Option[Path]): ExecutionHandle
