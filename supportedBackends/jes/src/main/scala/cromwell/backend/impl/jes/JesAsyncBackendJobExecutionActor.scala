@@ -10,7 +10,7 @@ import com.google.cloud.storage.contrib.nio.CloudStoragePath
 import cromwell.backend._
 import cromwell.backend.async.{AbortedExecutionHandle, ExecutionHandle, FailedNonRetryableExecutionHandle, FailedRetryableExecutionHandle, PendingExecutionHandle, SuccessfulExecutionHandle}
 import cromwell.backend.impl.jes.RunStatus.{Failed, TerminalRunStatus}
-import cromwell.backend.impl.jes.errors.JesError
+import cromwell.backend.impl.jes.errors._
 import cromwell.backend.impl.jes.io._
 import cromwell.backend.impl.jes.statuspolling.JesPollingActorClient
 import cromwell.backend.standard.{StandardAsyncExecutionActor, StandardAsyncExecutionActorParams, StandardAsyncJob}
@@ -434,8 +434,21 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
       case unknown => throw new RuntimeException(s"handleExecutionFailure not called with RunStatus.Failed. Instead got $unknown")
     }
 
+    val jobTag = jobPaths.jobKey.tag
+
     // FIXME: It's unclear to me why we're optioning stderr, nothing downstream seems to care
-    val jesError = JesError(runStatus.errorCode, runStatus.errorMessage, returnCode, Option(jobPaths.stderr))
+    JesError(runStatus.errorCode, runStatus.errorMessage, returnCode, Option(jobPaths.stderr)) match {
+      case a: Aborted => a.toExecutionHandle(jobTag)
+      case uje: UnknownJesError => uje.toExecutionHandle(jobTag)
+      case u: UnexpectedTermination =>
+        // FIXME: How many times has this happened? If too many, how to error?
+        // FIXME: I'm going to need a way for these two to fall back to a NonRetryableException w/ an appropriate message
+        u.toExecutionHandle(jobTag)
+      case p: Preemption =>
+        // FIXME: Should we preempt? if not, what to return instead?
+        // FIXME: How to seed the preemption count? - currently the value 'retryable' above is getting it from the RAs
+        p.toExecutionHandle(jobTag)
+    }
 
     // FIXME: Now match on the jesError. Aborted & unknown go right through. the unexpected term and preempted need to behandled specially
 
