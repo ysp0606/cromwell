@@ -427,8 +427,6 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
   override def handleExecutionFailure(runStatus: RunStatus,
                                       handle: StandardAsyncPendingExecutionHandle,
                                       returnCode: Option[Int]): ExecutionHandle = {
-    import lenthall.numeric.IntegerUtil._
-
     val runStatus: RunStatus.Failed = runStatus match {
       case failedStatus: RunStatus.Failed => failedStatus
       case unknown => throw new RuntimeException(s"handleExecutionFailure not called with RunStatus.Failed. Instead got $unknown")
@@ -441,17 +439,25 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
       case a: Aborted => a.toExecutionHandle(jobTag)
       case uje: UnknownJesError => uje.toExecutionHandle(jobTag)
       case u: UnexpectedTermination =>
-        // FIXME: How many times has this happened? If too many, how to error?
-        // FIXME: I'm going to need a way for these two to fall back to a NonRetryableException w/ an appropriate message
-        u.toExecutionHandle(jobTag)
+        val retryCount: Int = ???
+        if (retryCount < 2) {
+          u.toExecutionHandle(jobTag)
+        } else {
+          val x: ExecutionHandle = ???
+          x
+        }
       case p: Preemption =>
-        // FIXME: Should we preempt? if not, what to return instead?
-        // FIXME: How to seed the preemption count? - currently the value 'retryable' above is getting it from the RAs
-        p.toExecutionHandle(jobTag)
+        val preemptionCount: Int = ???
+        if (preemptionCount < runtimeAttributes.preemptible) {
+          p.toExecutionHandle(jobTag)
+        } else {
+          val x: ExecutionHandle = ???
+          x
+        }
     }
 
-    // FIXME: Now match on the jesError. Aborted & unknown go right through. the unexpected term and preempted need to behandled specially
 
+    // FIXME: The below now maintained in case i want error messages from before
     // In the event that the error isn't caught by the special cases, this will be used
 //    def nonRetryableException: FailedNonRetryableExecutionHandle = {
 //      val exception = jesError.map(_.toException(failed.errorMessage, jobPaths.jobKey.tag, Option(jobPaths.stderr))
