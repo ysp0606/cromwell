@@ -434,7 +434,10 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
       case unknown => throw new RuntimeException(s"handleExecutionFailure not called with RunStatus.Failed. Instead got $unknown")
     }
 
-    val jesError = JesError.fromFailedStatus(runStatus)
+    // FIXME: It's unclear to me why we're optioning stderr, nothing downstream seems to care
+    val jesError = JesError(runStatus.errorCode, runStatus.errorMessage, returnCode, Option(jobPaths.stderr))
+
+    // FIXME: Now match on the jesError. Aborted & unknown go right through. the unexpected term and preempted need to behandled specially
 
     // In the event that the error isn't caught by the special cases, this will be used
 //    def nonRetryableException: FailedNonRetryableExecutionHandle = {
@@ -445,12 +448,6 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
 //    val errorCode = failed.errorCode
 //    val taskName = s"${workflowDescriptor.id}:${call.unqualifiedName}"
 //    val attempt = jobDescriptor.key.attempt
-
-    jesError match {
-        // FIXME: handle preemption & nonpreemption
-        // FIXME: get - that thing is an option, should we just have the message in the JesError?
-      case other => other.toExecutionHandle(runStatus.errorMessage.get, returnCode, jobPaths.jobKey.tag, Option(jobPaths.stderr))
-    }
 
 
 //    failed.errorMessage match {

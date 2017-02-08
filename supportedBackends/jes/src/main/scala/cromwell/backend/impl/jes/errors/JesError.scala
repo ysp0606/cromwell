@@ -10,11 +10,25 @@ import scala.util.Try
 import scala.language.postfixOps
 
 object JesError {
-  private val KnownJesErrors = List(FailedToDelocalize, Preemption, UnexpectedTermination)
+  def apply(errorCode: Int,
+            errorMessage: Option[String],
+            jobReturnCode: Option[Int],
+            stderr: Option[Path]): JesError = {
+    val jesCode: Option[Int] = errorMessage flatMap getJesErrorCode
 
-  def fromFailedStatus(failedStatus: RunStatus.Failed): JesError = {
-    failedStatus.errorMessage flatMap { e => KnownJesErrors.toStream.find(_.isMatch(failedStatus.errorCode, e)) } getOrElse UnknownJesError(failedStatus.errorCode)
+    (errorCode, jesCode) match {
+      case (1, None) => Aborted(errorMessage, jobReturnCode)
+      case (5, Some(10)) => FailedToDelocalize(errorMessage, jobReturnCode, stderr)
+      case (10, Some(13)) => UnexpectedTermination(errorCode, errorMessage, jobReturnCode)
+      case (10, Some(14)) => Preemption(errorCode, errorMessage, jobReturnCode)
+      case _ => UnknownJesError(errorCode, errorMessage, jobReturnCode)
+    }
   }
+//  private val KnownJesErrors = List(FailedToDelocalize, Preemption, UnexpectedTermination)
+//
+//  def fromFailedStatus(failedStatus: RunStatus.Failed): JesError = {
+//    failedStatus.errorMessage flatMap { e => KnownJesErrors.toStream.find(_.isMatch(failedStatus.errorCode, e)) } getOrElse UnknownJesError(failedStatus.errorCode)
+//  }
 
   /**
     * JES sometimes embeds a JES specific error code in the message beyond the standard Google RPC error code,
@@ -25,61 +39,43 @@ object JesError {
   }
 
   def StandardException(errorCode: Int, message: String, jobTag: String) = {
-    new RuntimeException(s"Task $jobTag failed: error code $errorCode. Message: $message")
+    new RuntimeException(s"Task $jobTag failed: error code $errorCode.$message")
   }
 }
-
-/**
-  * FIXME:
-  *
-  * errorMessage is an option, but all known errors have one
-  * jes code is an option
-  * return code is an option
-  *
-  * error message needs to be able to be changed, even when Some
-  *
-  * do we care about stripping out the numeric code for the known errors which have one? i don't think so, so far
-  * only the delocalizer is doing that. who cares.
-  *
-  * can have top level function to do the prettifying for "Message: ..." in the Some cases for error message
-  *
-  */
 
 sealed abstract class JesError {
-  def errorCode: Int
-  def toExecutionHandle(message: String, jobReturnCode: Option[Int], jobTag: String, stderrPath: Option[Path]): ExecutionHandle
+  val errorMessage: Option[String]
+  val jobReturnCode: Option[Int]
+
+  def toExecutionHandle(jobTag: String): ExecutionHandle
+
+  protected val prettyPrintedError: String = errorMessage map { e => s" Message: $e" } getOrElse ""
 }
 
 /**
-  * "Unknown" JES errors in the sense that Cromwell isn't aware of them, there are several that we the humans
-  * know exist but we're not handling them in any special way at the moment.
-  */
-private final case class UnknownJesError(errorCode: Int) extends JesError {
-  override def toExecutionHandle(message: String, jobReturnCode: Option[Int], jobTag: String, stderrPath: Option[Path]): ExecutionHandle = {
-    FailedNonRetryableExecutionHandle(StandardException(errorCode, message, jobTag), jobReturnCode)
+ * "Unknown" JES errors in the sense that Cromwell isn't aware of them, there are several that we the humans
+ * know exist but we're not handling them in any special way at the moment.
+ */
+final case class UnknownJesError(errorCode: Int,
+                                 errorMessage: Option[String],
+                                 jobReturnCode: Option[Int]) extends JesError {
+  override def toExecutionHandle(jobTag: String): ExecutionHandle = {
+    FailedNonRetryableExecutionHandle(StandardException(errorCode, prettyPrintedError, jobTag), jobReturnCode)
   }
 }
 
-// FIXME ADTize?
-sealed abstract class KnownJesError(val errorCode: Int, val jesCode: Option[Int]) extends JesError {
-  def isMatch(otherErrorCode: Int, otherErrorMessage: String): Boolean = {
-    val otherJesCode = getJesErrorCode(otherErrorMessage)
-    (errorCode == otherErrorCode) && (jesCode == otherJesCode)
-  }
-
-  def toExecutionHandle(message: String, jobReturnCode: Option[Int], jobTag: String, stderrPath: Option[Path]): ExecutionHandle = {
+sealed abstract class KnownJesError extends JesError {
+  override def toExecutionHandle(jobTag: String): ExecutionHandle = {
     this match {
-      case FailedToDelocalize => FailedNonRetryableExecutionHandle(FailedToDelocalizeFailure(message, jobTag, stderrPath), jobReturnCode)
-      case Aborted => AbortedExecutionHandle
-      case UnexpectedTermination | Preemption => FailedRetryableExecutionHandle(StandardException(errorCode, message, jobTag), jobReturnCode)
+      case a: Aborted => AbortedExecutionHandle
+      case f: FailedToDelocalize => FailedNonRetryableExecutionHandle(FailedToDelocalizeFailure(prettyPrintedError, jobTag, f.stderr))
+      case u: UnexpectedTermination => FailedRetryableExecutionHandle(StandardException(u.errorCode, prettyPrintedError, jobTag), jobReturnCode)
+      case p: UnexpectedTermination => FailedRetryableExecutionHandle(StandardException(p.errorCode, prettyPrintedError, jobTag), jobReturnCode)
     }
   }
 }
 
-private case object Aborted extends KnownJesError(5, None)
-private case object FailedToDelocalize extends KnownJesError(5, Option(10))
-private case object UnexpectedTermination extends KnownJesError(10, Option(13))
-private case object Preemption extends KnownJesError(10, Option(14))
-
-
-
+final case class FailedToDelocalize(errorMessage: Option[String], jobReturnCode: Option[Int], stderr: Option[Path]) extends KnownJesError
+final case class Aborted(errorMessage: Option[String], jobReturnCode: Option[Int]) extends KnownJesError
+final case class UnexpectedTermination(errorCode: Int, errorMessage: Option[String], jobReturnCode: Option[Int]) extends KnownJesError
+final case class Preemption(errorCode: Int, errorMessage: Option[String], jobReturnCode: Option[Int]) extends KnownJesError
