@@ -19,7 +19,6 @@ object JesError {
     (errorCode, jesCode) match {
       case (1, None) => Aborted(errorMessage, jobReturnCode)
       case (5, Some(10)) => FailedToDelocalize(errorMessage, jobReturnCode, stderr)
-        // FIXME: What about including the attempt/max here and have e.g. RetryableUnexpectedTermination
       case (10, Some(13)) => UnexpectedTermination(errorCode, errorMessage, jobReturnCode)
       case (10, Some(14)) => Preemption(errorCode, errorMessage, jobReturnCode)
       case _ => UnknownJesError(errorCode, errorMessage, jobReturnCode)
