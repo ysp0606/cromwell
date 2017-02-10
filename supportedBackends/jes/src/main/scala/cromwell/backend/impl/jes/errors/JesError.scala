@@ -19,6 +19,7 @@ object JesError {
     (errorCode, jesCode) match {
       case (1, None) => Aborted(errorMessage, jobReturnCode)
       case (5, Some(10)) => FailedToDelocalize(errorMessage, jobReturnCode, stderr)
+        // FIXME: What about including the attempt/max here and have e.g. RetryableUnexpectedTermination
       case (10, Some(13)) => UnexpectedTermination(errorCode, errorMessage, jobReturnCode)
       case (10, Some(14)) => Preemption(errorCode, errorMessage, jobReturnCode)
       case _ => UnknownJesError(errorCode, errorMessage, jobReturnCode)
@@ -42,11 +43,23 @@ sealed abstract class JesError {
   val errorMessage: Option[String]
   val jobReturnCode: Option[Int]
 
-  def toExecutionHandle(jobTag: String): ExecutionHandle = {
+  def toExecutionHandle(jobTag: String, currentAttempt: Int = 0, maxAttempts: Int = 0): ExecutionHandle = {
     case a: Aborted => AbortedExecutionHandle
     case f: FailedToDelocalize => FailedNonRetryableExecutionHandle(FailedToDelocalizeFailure(prettyPrintedError, jobTag, f.stderr))
     case u: UnexpectedTermination => FailedRetryableExecutionHandle(StandardException(u.errorCode, prettyPrintedError, jobTag), jobReturnCode)
-    case p: UnexpectedTermination => FailedRetryableExecutionHandle(StandardException(p.errorCode, prettyPrintedError, jobTag), jobReturnCode)
+    case p: Preemption =>
+      import lenthall.numeric.IntegerUtil._
+      val preemptedMsg = s"Task $taskName was preempted for the ${currentAttempt.toOrdinal} time."
+      if (currentAttempt < maxAttempts) {
+          val errorMsg = s"""$preemptedMsg The call will be restarted with another preemptible VM (max preemptible attempts number is $maxAttempts).
+                 |Error code ${p.errorCode}. Message: $errorMessage""".stripMargin
+        FailedRetryableExecutionHandle(StandardException(p.errorCode, errorMsg, jobTag), jobReturnCode)
+
+      } else {
+        val errorMsg =  s"""$preemptedMsg The maximum number of preemptible attempts ($maxAttempts) has been reached. The call will be restarted with a non-preemptible VM.
+                            |Error code ${p.errorCode}. Message: $errorMessage)""".stripMargin
+        FailedNonRetryableExecutionHandle(StandardException(p.errorCode, errorMsg, jobTag), jobReturnCode)
+      }
     case uje: UnknownJesError => FailedNonRetryableExecutionHandle(StandardException(uje.errorCode, prettyPrintedError, jobTag), jobReturnCode)
   }
 

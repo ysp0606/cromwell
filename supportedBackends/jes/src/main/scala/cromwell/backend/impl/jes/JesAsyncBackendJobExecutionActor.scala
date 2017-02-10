@@ -443,16 +443,14 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
         if (retryCount < 2) {
           u.toExecutionHandle(jobTag)
         } else {
-          val x: ExecutionHandle = ???
-          x
+          u.toNonRetryableExecutionHandle(jobTag)
         }
       case p: Preemption =>
         val preemptionCount: Int = ???
         if (preemptionCount < runtimeAttributes.preemptible) {
           p.toExecutionHandle(jobTag)
         } else {
-          val x: ExecutionHandle = ???
-          x
+          p.toNonRetryableExecutionHandle(jobTag)
         }
     }
 
