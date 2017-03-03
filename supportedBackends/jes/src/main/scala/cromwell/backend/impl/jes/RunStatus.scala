@@ -1,9 +1,10 @@
 package cromwell.backend.impl.jes
 
-import java.nio.file.Path
-
-import cromwell.backend.impl.jes.errors.KnownJesError$
+import cromwell.backend.impl.jes.errors.{JesError, KnownJesError}
 import cromwell.core.ExecutionEvent
+import cromwell.core.path.Path
+
+import scala.util.Try
 
 sealed trait RunStatus {
   import RunStatus._
@@ -24,9 +25,31 @@ object RunStatus {
     def machineType: Option[String]
     def zone: Option[String]
     def instanceName: Option[String]
+    def errorMessage: Option[String]
+    def errorCode: Int
   }
 
-  case class Success(eventList: Seq[ExecutionEvent], machineType: Option[String], zone: Option[String], instanceName: Option[String]) extends TerminalRunStatus {
+  //case object TerminalRunStatus {
+  //  def apply(errorCode: Int,
+  //    errorMessage: Option[String],
+  //    eventList: Seq[ExecutionEvent],
+  //    machineType: Option[String],
+  //    zone: Option[String],
+  //    instanceName: Option[String]): TerminalRunStatus = {
+//
+  //    val JesPreemption = 14
+//
+  //    def getJesErrorCode(errorMessage: Option[String]): Option[Int] = {
+  //      Try { errorMessage.get.substring(0, errorMessage.get.indexOf(':')).toInt } toOption
+  //    }
+  //    if (getJesErrorCode(errorMessage).contains(JesPreemption)) {
+  //      Preempted(errorCode, errorMessage, eventList, machineType, zone, instanceName)
+  //    }
+  //    else Failed(errorCode, errorMessage, eventList, machineType, zone, instanceName)
+  //  }
+  //}
+
+  case class Success(eventList: Seq[ExecutionEvent], machineType: Option[String], zone: Option[String], instanceName: Option[String], errorMessage: Option[String] = None) extends RunStatus {
     override def toString = "Success"
   }
 
@@ -38,16 +61,16 @@ object RunStatus {
                           instanceName: Option[String]) extends TerminalRunStatus {
     // Don't want to include errorMessage or code in the snappy status toString:
     override def toString = "Failed"
-    def toJesError: Option[KnownJesError] = KnownJesError.fromFailedStatus(this)
+  }
 
-    def toException(jobTag: String, stderrPath: Option[Path]): Exception = {
-      toJesError map { _.toException(errorMessage.getOrElse(""), jobTag, stderrPath) } getOrElse unknownError(jobTag)
-    }
+  //RUCHI:: Added preempted runStatus --> need it to be so to update BackendStatus
+  final case class Preempted(errorCode: Int,
+                          errorMessage: Option[String],
+                          eventList: Seq[ExecutionEvent],
+                          machineType: Option[String],
+                          zone: Option[String],
+                          instanceName: Option[String]) extends TerminalRunStatus {
 
-    private def unknownError(jobTag: String): RuntimeException = {
-      val baseMessage = s"Task $jobTag failed: error code $errorCode."
-      val message = errorMessage map { e => s"$baseMessage Message: $e" } getOrElse baseMessage
-      new RuntimeException(message)
-    }
+    override def toString = "Preempted"
   }
 }

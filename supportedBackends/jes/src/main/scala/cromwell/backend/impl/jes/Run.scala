@@ -7,7 +7,7 @@ import com.google.api.client.util.{ArrayMap => GArrayMap}
 import com.google.api.services.genomics.Genomics
 import com.google.api.services.genomics.model._
 import cromwell.backend.BackendJobDescriptor
-import cromwell.backend.impl.jes.RunStatus.{Failed, Initializing, Running, Success}
+import cromwell.backend.impl.jes.RunStatus._
 import cromwell.core.labels.Labels
 import cromwell.core.ExecutionEvent
 import cromwell.core.logging.JobLogger
@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
+import scala.util.Try
 
 object Run {
   private val GenomicsScopes = List(
@@ -115,6 +116,14 @@ object Run {
   implicit class RunOperationExtension(val operation: Operation) extends AnyVal {
     def hasStarted = operation.getMetadata.asScala.get("startTime") isDefined
   }
+  //RUCHI:: Differentiate between a Failed & Preempted backend status
+
+  val GoogleCancelledRpc = 1
+  val GoogleNotFoundRpc = 5
+  val GoogleAbortedRpc = 10 // Note "Aborted" here is not the same as our "abort"
+  val JesFailedToDelocalize = 5
+  val JesUnexpectedTermination = 13
+  val JesPreemption = 14
 
   def interpretOperationStatus(op: Operation): RunStatus = {
     if (op.getDone) {
@@ -124,9 +133,12 @@ object Run {
       lazy val instanceName = Option(ceInfo.get("instanceName"))
       lazy val zone = Option(ceInfo.get("zone"))
 
-      // If there's an error, generate a Failed status. Otherwise, we were successful!
+      // If there's an error, check for the preemption error code to generate Preempted status, or else generate a Failed status.
+      // Otherwise, we were successful!
       Option(op.getError) match {
         case None => Success(eventList, machineType, zone, instanceName)
+        case Some(error) if error.getCode.equals(GoogleAbortedRpc) && getJesErrorCode(error.getMessage).contains(JesPreemption) =>
+          Preempted(error.getCode, Option(error.getMessage), eventList, machineType, zone, instanceName)
         case Some(error) => Failed(error.getCode, Option(error.getMessage), eventList, machineType, zone, instanceName)
       }
     } else if (op.hasStarted) {
@@ -134,6 +146,10 @@ object Run {
     } else {
       Initializing
     }
+  }
+
+  def getJesErrorCode(errorMessage: String): Option[Int] = {
+    Try { errorMessage.substring(0, errorMessage.indexOf(':')).toInt } toOption
   }
 
   def getEventList(op: Operation): Seq[ExecutionEvent] = {

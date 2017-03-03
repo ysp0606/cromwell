@@ -1,8 +1,8 @@
 import sbt._
 
 object Dependencies {
-  lazy val lenthallV = "0.20"
-  lazy val wdl4sV = "0.10-3ad63bf-SNAP"
+  lazy val lenthallV = "0.21-e1b7822-SNAP"
+  lazy val wdl4sV = "0.10-9ad47e0-SNAP"
   lazy val sprayV = "1.3.3"
   /*
   spray-json is an independent project from the "spray suite"
@@ -46,8 +46,8 @@ object Dependencies {
 
   private val slf4jBindingDependencies = List(
     // http://logback.qos.ch/dependencies.html
-    "ch.qos.logback" % "logback-classic" % "1.1.7",
-    "ch.qos.logback" % "logback-access" % "1.1.7",
+    "ch.qos.logback" % "logback-classic" % "1.2.1",
+    "ch.qos.logback" % "logback-access" % "1.2.1",
     "org.codehaus.janino" % "janino" % "3.0.1"
   )
 
@@ -84,6 +84,8 @@ object Dependencies {
     "com.google.cloud" % "google-cloud-nio" % "0.3.0"
       exclude("com.google.api.grpc", "grpc-google-common-protos")
       exclude("com.google.cloud.datastore", "datastore-v1-protos")
+      exclude("org.apache.httpcomponents", "httpclient"),
+    "org.apache.httpcomponents" % "httpclient" % "4.5.2"
   )
 
   private val dbmsDependencies = List(
