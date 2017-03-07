@@ -1,10 +1,6 @@
 package cromwell.backend.impl.jes
 
-import cromwell.backend.impl.jes.errors.{JesError, KnownJesError}
 import cromwell.core.ExecutionEvent
-import cromwell.core.path.Path
-
-import scala.util.Try
 
 sealed trait RunStatus {
   import RunStatus._

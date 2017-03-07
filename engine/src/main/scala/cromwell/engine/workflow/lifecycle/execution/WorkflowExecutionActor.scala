@@ -2,7 +2,6 @@ package cromwell.engine.workflow.lifecycle.execution
 
 import akka.actor._
 import cats.data.NonEmptyList
-import com.typesafe.config.ConfigFactory
 import cromwell.backend.BackendJobExecutionActor.{AbortedResponse, JobFailedNonRetryableResponse, JobFailedRetryableResponse, JobSucceededResponse}
 import cromwell.backend.BackendLifecycleActor.AbortJobCommand
 import cromwell.backend.{AllBackendInitializationData, BackendJobDescriptorKey, JobExecutionMap}
@@ -20,7 +19,6 @@ import cromwell.util.StopAndLogSupervisor
 import cromwell.webservice.EngineStatsActor
 import lenthall.exception.ThrowableAggregation
 import lenthall.util.TryUtil
-import net.ceedubs.ficus.Ficus._
 import wdl4s.values.{WdlArray, WdlBoolean, WdlOptionalValue, WdlValue, WdlString}
 import org.apache.commons.lang3.StringUtils
 import wdl4s.{Scope, _}
@@ -726,7 +724,7 @@ object WorkflowExecutionActor {
     override val exceptionContext = s"WorkflowExecutionActor"
   }
 
-  private lazy val DefaultMaxRetriesFallbackValue = 10
+  //private lazy val DefaultMaxRetriesFallbackValue = 10
 
   def props(workflowDescriptor: EngineWorkflowDescriptor,
             serviceRegistryActor: ActorRef,
