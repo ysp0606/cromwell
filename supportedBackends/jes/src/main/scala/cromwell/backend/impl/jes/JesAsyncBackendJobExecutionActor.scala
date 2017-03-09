@@ -111,8 +111,8 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     else preemptionCount = Some(0)
     unexpectedRetryCount = Some(0)
 
-    tellKvStore(KvJobKey, preemptionCountKey, preemptionCount.get.toString)
-    tellKvStore(KvJobKey, unexpectedRetryCountKey, unexpectedRetryCount.get.toString  )
+    tellKvStore(kvJobKey, preemptionCountKey, preemptionCount.get.toString)
+    tellKvStore(kvJobKey, unexpectedRetryCountKey, unexpectedRetryCount.get.toString  )
   }
 
   override def receive: Receive = kvServiceActorReceive orElse pollingActorClientReceive orElse super.receive
@@ -297,15 +297,14 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
   }
 
   //RUCHI:: Needs serious Cleanup
-  val retryableCount = "RetraybleCount"
   val preemptionCountKey = "PreemptionCount"
   val unexpectedRetryCountKey = "UnexpectedRetryCount"
   val kvJobKey = KvJobKey(jobDescriptor.key.call.fullyQualifiedName, jobDescriptor.key.index, jobDescriptor.key.attempt)
   val futureKvJobKey = KvJobKey(jobDescriptor.key.call.fullyQualifiedName, jobDescriptor.key.index, jobDescriptor.key.attempt + 1)
 
   def getRetryCounts() = {
-    askKvStore(KvJobKey, preemptionCountKey)
-    askKvStore(KvJobKey, unexpectedRetryCountKey)
+    askKvStore(kvJobKey, preemptionCountKey)
+    askKvStore(kvJobKey, unexpectedRetryCountKey)
   }
 
   def tellKvStore(kvJobKey: KvJobKey, key: String, value: String): Unit = {
