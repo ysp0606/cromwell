@@ -25,26 +25,6 @@ object RunStatus {
     def errorCode: Int
   }
 
-  //case object TerminalRunStatus {
-  //  def apply(errorCode: Int,
-  //    errorMessage: Option[String],
-  //    eventList: Seq[ExecutionEvent],
-  //    machineType: Option[String],
-  //    zone: Option[String],
-  //    instanceName: Option[String]): TerminalRunStatus = {
-//
-  //    val JesPreemption = 14
-//
-  //    def getJesErrorCode(errorMessage: Option[String]): Option[Int] = {
-  //      Try { errorMessage.get.substring(0, errorMessage.get.indexOf(':')).toInt } toOption
-  //    }
-  //    if (getJesErrorCode(errorMessage).contains(JesPreemption)) {
-  //      Preempted(errorCode, errorMessage, eventList, machineType, zone, instanceName)
-  //    }
-  //    else Failed(errorCode, errorMessage, eventList, machineType, zone, instanceName)
-  //  }
-  //}
-
   case class Success(eventList: Seq[ExecutionEvent], machineType: Option[String], zone: Option[String], instanceName: Option[String], errorMessage: Option[String] = None) extends RunStatus {
     override def toString = "Success"
   }
@@ -59,7 +39,7 @@ object RunStatus {
     override def toString = "Failed"
   }
 
-  //RUCHI:: Added preempted runStatus --> need it to be so to update BackendStatus
+  //RUCHI:: Added preempted runStatus --> to be added to the list of BackendStatuses
   final case class Preempted(errorCode: Int,
                           errorMessage: Option[String],
                           eventList: Seq[ExecutionEvent],

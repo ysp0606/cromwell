@@ -568,7 +568,6 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
        */
       val prevStateName = previousStatus.map(_.toString).getOrElse("-")
       jobLogger.info(s"$tag Status change from $prevStateName to $status")
-      //RUCHI:: only usage of BackendStatus anywhere that I see?
       tellMetadata(Map(CallMetadataKeys.BackendStatus -> status))
     }
 

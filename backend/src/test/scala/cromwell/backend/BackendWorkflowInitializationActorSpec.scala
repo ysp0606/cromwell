@@ -184,9 +184,6 @@ class TestPredicateBackendWorkflowInitializationActor extends BackendWorkflowIni
   override protected def runtimeAttributeValidators: Map[String, (Option[WdlValue]) => Boolean] =
     throw new NotImplementedError("runtimeAttributeValidators")
 
-  override protected def coerceDefaultRuntimeAttributes(options: WorkflowOptions): Try[Map[String, WdlValue]] =
-    throw new NotImplementedError("coerceDefaultRuntimeAttributes")
-
   override def beforeAll(): Future[Option[BackendInitializationData]] = throw new NotImplementedError("beforeAll")
 
   override def validate(): Future[Unit] = throw new NotImplementedError("validate")

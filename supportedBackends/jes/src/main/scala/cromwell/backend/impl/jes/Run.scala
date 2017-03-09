@@ -116,7 +116,6 @@ object Run {
   implicit class RunOperationExtension(val operation: Operation) extends AnyVal {
     def hasStarted = operation.getMetadata.asScala.get("startTime") isDefined
   }
-  //RUCHI:: Differentiate between a Failed & Preempted backend status
 
   val GoogleCancelledRpc = 1
   val GoogleNotFoundRpc = 5
