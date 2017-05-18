@@ -97,8 +97,9 @@ sealed trait ConfigAsyncJobExecutionActor extends SharedFileSystemAsyncJobExecut
   private lazy val runtimeAttributeInputs: WorkflowCoercedInputs = {
     val declarationValidations = configInitializationData.declarationValidations
     val inputOptions = declarationValidations map {
-      case declarationValidation if declarationValidation.key == DockerValidation.instance.key && jobDescriptor.dockerWithHash.isDefined =>
-        Option(declarationValidation.key -> WdlString(jobDescriptor.dockerWithHash.get.dockerAttribute))
+      case declarationValidation if declarationValidation.key == DockerValidation.instance.key && jobDescriptor.callCachingEligibility.dockerHash.isDefined =>
+        val dockerHash = jobDescriptor.callCachingEligibility.dockerHash.get
+        Option(declarationValidation.key -> WdlString(dockerHash))
       case declarationValidation =>
         declarationValidation.extractWdlValueOption(validatedRuntimeAttributes) map { wdlValue =>
           declarationValidation.key -> wdlValue

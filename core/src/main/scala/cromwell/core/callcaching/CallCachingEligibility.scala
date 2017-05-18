@@ -1,19 +1,31 @@
 package cromwell.core.callcaching
 
-sealed trait CallCachingEligibility
-sealed trait CallCachingEligible extends CallCachingEligibility
-sealed trait CallCachingIneligible extends CallCachingEligibility {
-  def message: String
+sealed trait CallCachingEligibility {
+  def isEligible: Boolean
+  def dockerHash: Option[String]
 }
 
-case object NoDocker extends CallCachingEligible
-case class DockerWithHash(dockerAttribute: String) extends CallCachingEligible
-case class FloatingDockerTagWithHash(dockerAttributeWithTag: String, dockerAttributeWithHash: String) extends CallCachingEligible
+sealed trait CallCachingEligible extends CallCachingEligibility {
+  def isEligible = true
+}
+sealed trait CallCachingIneligible extends CallCachingEligibility {
+  def isEligible = false
+}
 
-case object FloatingDockerTagWithoutHash extends CallCachingIneligible {
-  override val message = s"""You are using a floating docker tag in this task. Cromwell does not consider tasks with floating tags to be eligible for call caching.
-         |If you want this task to be eligible for call caching in the future, use a docker runtime attribute with a digest instead.
-         |Cromwell attempted to retrieve the current hash for this docker image but failed.
-         |This is not necessarily a cause for concern as Cromwell is currently only able to retrieve hashes for Dockerhub and GCR images.
-         |The job will be dispatched to the appropriate backend that will attempt to run it.""".stripMargin
+case object NoDocker extends CallCachingEligible {
+  override def dockerHash: Option[String] = None
+}
+case class DockerWithHash(dockerAttribute: String) extends CallCachingEligible {
+  override def dockerHash: Option[String] = Option(dockerAttribute)
+}
+
+// Commenting this out because it's not used and I'm not sure that it would be desirable to use the dockerAttributeWithHash
+// as the String to hash if that might differ from that String in an equivalent DockerWithHash.
+//
+//case class FloatingDockerTagWithHash(dockerAttributeWithTag: String, dockerAttributeWithHash: String) extends CallCachingEligible {
+//  override def dockerHash: Option[String] = Option(dockerAttributeWithHash)
+//}
+
+case class FloatingDockerTagWithoutHash(dockerTag: String) extends CallCachingIneligible {
+  override def dockerHash: Option[String] = None
 }

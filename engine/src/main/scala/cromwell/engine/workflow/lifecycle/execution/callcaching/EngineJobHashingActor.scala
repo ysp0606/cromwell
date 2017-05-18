@@ -23,7 +23,7 @@ class EngineJobHashingActor(receiver: ActorRef,
                             runtimeAttributeDefinitions: Set[RuntimeAttributeDefinition],
                             backendName: String,
                             activity: CallCachingActivity,
-                            dockerWithHash: DockerWithHash) extends Actor with ActorLogging with JobLogging {
+                            callCachingEligible: CallCachingEligible) extends Actor with ActorLogging with JobLogging {
 
   override val jobTag = jobDescriptor.key.tag
   override val workflowId = jobDescriptor.workflowDescriptor.id
@@ -43,7 +43,7 @@ class EngineJobHashingActor(receiver: ActorRef,
       backendName,
       fileHashingActorProps,
       activity.writeToCache,
-      dockerWithHash
+      callCachingEligible
     ))
     super.preStart()
   }
@@ -117,7 +117,7 @@ object EngineJobHashingActor {
             runtimeAttributeDefinitions: Set[RuntimeAttributeDefinition],
             backendName: String,
             activity: CallCachingActivity,
-            dockerWithHash: DockerWithHash): Props = Props(new EngineJobHashingActor(
+            callCachingEligible: CallCachingEligible): Props = Props(new EngineJobHashingActor(
     receiver = receiver,
     jobDescriptor = jobDescriptor,
     initializationData = initializationData,
@@ -126,5 +126,5 @@ object EngineJobHashingActor {
     runtimeAttributeDefinitions = runtimeAttributeDefinitions,
     backendName = backendName,
     activity = activity,
-    dockerWithHash = dockerWithHash)).withDispatcher(EngineDispatcher)
+    callCachingEligible = callCachingEligible)).withDispatcher(EngineDispatcher)
 }

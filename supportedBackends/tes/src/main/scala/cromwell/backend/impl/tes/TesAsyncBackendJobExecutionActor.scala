@@ -60,7 +60,7 @@ class TesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
   )
   
   override lazy val dockerImageUsed: Option[String] =
-    jobDescriptor.dockerWithHash.map(_.dockerAttribute).orElse(Option(runtimeAttributes.dockerImage))
+    jobDescriptor.callCachingEligibility.dockerHash.orElse(Option(runtimeAttributes.dockerImage))
 
   private val tesEndpoint = workflowDescriptor.workflowOptions.getOrElse("endpoint", tesConfiguration.endpointURL)
 

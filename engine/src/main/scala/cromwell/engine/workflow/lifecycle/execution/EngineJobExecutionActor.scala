@@ -158,7 +158,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
         callCachingReadResultMetadataKey -> s"Cache Hit: $cacheHitDetails"))
       log.debug("Cache hit for {}! Fetching cached result {}", jobTag, cacheResultId)
       makeBackendCopyCacheHit(wdlValueSimpletons, jobDetritus, returnCode, data, cacheResultId)
-    case Event(CachedOutputLookupFailed(callCachingEntryId, error), data: ResponsePendingData) =>
+    case Event(CachedOutputLookupFailed(_, error), data: ResponsePendingData) =>
       log.warning("Can't make a copy of the cached job outputs for {} due to {}. Running job.", jobTag, error)
       runJob(data)
     case Event(hashes: CallCacheHashes, data: ResponsePendingData) =>
@@ -259,7 +259,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
   when(UpdatingJobStore) {
     case Event(JobStoreWriteSuccess(_), data: ResponseData) =>
       forwardAndStop(data.response)
-    case Event(JobStoreWriteFailure(t), data: ResponseData) =>
+    case Event(JobStoreWriteFailure(t), _: ResponseData) =>
       respondAndStop(JobFailedNonRetryableResponse(jobDescriptorKey, new Exception(s"JobStore write failure: ${t.getMessage}", t), None))
   }
 
@@ -276,14 +276,14 @@ class EngineJobExecutionActor(replyTo: ActorRef,
   }
 
   private def handleReadFromCacheOn(jobDescriptor: BackendJobDescriptor, activity: CallCachingActivity, updatedData: ResponsePendingData) = {
-    jobDescriptor.dockerWithHash match {
+    jobDescriptor.callCachingEligibility match {
         // If the job is eligible, initialize job hashing and go to CheckingCallCache state
-      case Some(dockerWithHash) =>
-        initializeJobHashing(jobDescriptor, activity, dockerWithHash) match {
+      case eligible: CallCachingEligible =>
+        initializeJobHashing(jobDescriptor, activity, eligible) match {
           case Success(ejha) => goto(CheckingCallCache) using updatedData.withEJHA(ejha)
           case Failure(failure) => respondAndStop(JobFailedNonRetryableResponse(jobDescriptorKey.jobKey, failure, None))
         }
-      case None =>
+      case _ =>
         // If the job is ineligible, turn call caching off
         writeToMetadata(Map(callCachingReadResultMetadataKey -> s"Cache Miss"))
         disableCallCaching()
@@ -292,14 +292,14 @@ class EngineJobExecutionActor(replyTo: ActorRef,
   }
 
   private def handleReadFromCacheOff(jobDescriptor: BackendJobDescriptor, activity: CallCachingActivity, updatedData: ResponsePendingData) = {
-    jobDescriptor.dockerWithHash match {
+    jobDescriptor.callCachingEligibility match {
         // If the job is eligible, initialize job hashing so it can be written to the cache
-      case Some(dockerWithHash) => initializeJobHashing(jobDescriptor, activity, dockerWithHash) match {
+      case eligible: CallCachingEligible => initializeJobHashing(jobDescriptor, activity, eligible) match {
         case Failure(failure) => log.error(failure, "Failed to initialize job hashing. The job will not be written to the cache")
         case _ =>
       }
       // Don't even initialize hashing to write to the cache if the job is ineligible
-      case None => disableCallCaching()
+      case _ => disableCallCaching()
     }
     // If read from cache is off, always run the job
     runJob(updatedData)
@@ -359,7 +359,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
     goto(PreparingJob)
   }
 
-  def initializeJobHashing(jobDescriptor: BackendJobDescriptor, activity: CallCachingActivity, dockerWithHash: DockerWithHash): Try[ActorRef] = {
+  def initializeJobHashing(jobDescriptor: BackendJobDescriptor, activity: CallCachingActivity, callCachingEligible: CallCachingEligible): Try[ActorRef] = {
     val maybeFileHashingActorProps = factory.fileHashingActorProps map {
       _.apply(jobDescriptor, initializationData, serviceRegistryActor, ioActor)
     }
@@ -375,7 +375,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
           factory.runtimeAttributeDefinitions(initializationData),
           backendName,
           activity,
-          dockerWithHash
+          callCachingEligible
         )
         val ejha = context.actorOf(props, s"ejha_for_$jobDescriptor")
 
@@ -443,7 +443,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
         log.info("Trying to use another cache hit for job: {}", jobDescriptorKey)
         ejha ! NextHit
         goto(CheckingCallCache)
-      case newData =>
+      case _ =>
         log.info("Could not find another cache hit, falling back to running job: {}", jobDescriptorKey)
         runJob(data)
     }
@@ -485,9 +485,9 @@ class EngineJobExecutionActor(replyTo: ActorRef,
 
   private def saveJobCompletionToJobStore(updatedData: ResponseData) = {
     updatedData.response match {
-      case JobSucceededResponse(jobKey: BackendJobDescriptorKey, returnCode: Option[Int], jobOutputs: CallOutputs, _, executionEvents, _) =>
+      case JobSucceededResponse(jobKey: BackendJobDescriptorKey, returnCode: Option[Int], jobOutputs: CallOutputs, _, _, _) =>
         saveSuccessfulJobResults(jobKey, returnCode, jobOutputs)
-      case AbortedResponse(jobKey: BackendJobDescriptorKey) =>
+      case AbortedResponse(_: BackendJobDescriptorKey) =>
         log.debug("{}: Won't save aborted job response to JobStore", jobTag)
         forwardAndStop(updatedData.response)
       case JobFailedNonRetryableResponse(jobKey: BackendJobDescriptorKey, throwable: Throwable, returnCode: Option[Int]) => saveUnsuccessfulJobResults(jobKey, returnCode, throwable, retryable = false)

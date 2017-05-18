@@ -17,7 +17,7 @@ class EjeaPreparingJobSpec extends EngineJobExecutionActorSpec with CanExpectHas
     CallCachingModes foreach { mode =>
       if (mode.readFromCache) {
         s"Start checking for a cache hit when job preparation succeeds and a docker hash is available ($mode)" in {
-          val jobDescriptor = helper.backendJobDescriptor.copy(dockerWithHash = Option(DockerWithHash("hello")))
+          val jobDescriptor = helper.backendJobDescriptor.copy(callCachingEligibility = DockerWithHash("hello"))
           ejea = ejeaInPreparingState(mode)
           ejea ! jobPrepSuccessResponse(jobDescriptor)
           expectHashingActorInitialization(mode, jobDescriptor)

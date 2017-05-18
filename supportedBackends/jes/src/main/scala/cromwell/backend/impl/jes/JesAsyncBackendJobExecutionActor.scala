@@ -100,7 +100,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
 
   private val previousRetryReasons: ErrorOr[PreviousRetryReasons] = PreviousRetryReasons.tryApply(jobDescriptor.prefetchedKvStoreEntries, jobDescriptor.key.attempt)
 
-  private lazy val jobDockerImage = jobDescriptor.dockerWithHash.map(_.dockerAttribute).getOrElse(runtimeAttributes.dockerImage)
+  private lazy val jobDockerImage = jobDescriptor.callCachingEligibility.dockerHash.getOrElse(runtimeAttributes.dockerImage)
   
   override lazy val dockerImageUsed: Option[String] = Option(jobDockerImage)
   

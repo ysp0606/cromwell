@@ -47,7 +47,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
     actor ! Start
     expectMsgPF(5 seconds) {
       case success: BackendJobPreparationSucceeded =>
-        success.jobDescriptor.dockerWithHash shouldBe None
+        success.jobDescriptor.callCachingEligibility.dockerHash shouldBe None
     }
     helper.workflowDockerLookupActor.expectNoMsg(1 second)
   }
@@ -63,7 +63,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
     expectMsgPF(5 seconds) {
       case success: BackendJobPreparationSucceeded =>
         success.jobDescriptor.runtimeAttributes("docker").valueString shouldBe dockerValue
-        success.jobDescriptor.dockerWithHash shouldBe Some(DockerWithHash("library/ubuntu@sha256:71cd81252a3563a03ad8daee81047b62ab5d892ebbfbf71cf53415f29c130950"))
+        success.jobDescriptor.callCachingEligibility shouldBe DockerWithHash("library/ubuntu@sha256:71cd81252a3563a03ad8daee81047b62ab5d892ebbfbf71cf53415f29c130950")
     }
     helper.workflowDockerLookupActor.expectNoMsg(1 second)
   }
@@ -118,7 +118,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
     expectMsgPF(5 seconds) {
       case success: BackendJobPreparationSucceeded =>
         success.jobDescriptor.runtimeAttributes("docker").valueString shouldBe dockerValue
-        success.jobDescriptor.dockerWithHash shouldBe Some(DockerWithHash(finalValue))
+        success.jobDescriptor.callCachingEligibility shouldBe DockerWithHash(finalValue)
     }
   }
 
@@ -136,7 +136,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
     expectMsgPF(5 seconds) {
       case success: BackendJobPreparationSucceeded =>
         success.jobDescriptor.runtimeAttributes("docker").valueString shouldBe dockerValue
-        success.jobDescriptor.dockerWithHash shouldBe None
+        success.jobDescriptor.callCachingEligibility.isEligible shouldBe false
     }
   }
 }
