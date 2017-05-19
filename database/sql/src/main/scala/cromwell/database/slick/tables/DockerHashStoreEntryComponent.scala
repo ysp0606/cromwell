@@ -27,7 +27,7 @@ trait DockerHashStoreEntryComponent {
   val dockerHashStoreEntryIdsAutoInc = dockerHashStoreEntries returning dockerHashStoreEntries.map(_.dockerHashStoreEntryId)
 
   /**
-    * Useful for finding the workflow store for a given workflow execution UUID
+    * Useful for finding the docker hash store for a given workflow execution UUID
     */
   val dockerHashStoreEntriesForWorkflowExecutionUuid = Compiled(
     (workflowExecutionUuid: Rep[String]) => for {

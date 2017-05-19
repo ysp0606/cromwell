@@ -97,6 +97,7 @@ sealed trait ConfigAsyncJobExecutionActor extends SharedFileSystemAsyncJobExecut
   private lazy val runtimeAttributeInputs: WorkflowCoercedInputs = {
     val declarationValidations = configInitializationData.declarationValidations
     val inputOptions = declarationValidations map {
+      // Is it always the right thing to pass the Docker hash to a config backend?  What if it can't use hashes?
       case declarationValidation if declarationValidation.key == DockerValidation.instance.key && jobDescriptor.callCachingEligibility.dockerHash.isDefined =>
         val dockerHash = jobDescriptor.callCachingEligibility.dockerHash.get
         Option(declarationValidation.key -> WdlString(dockerHash))
@@ -108,7 +109,7 @@ sealed trait ConfigAsyncJobExecutionActor extends SharedFileSystemAsyncJobExecut
     inputOptions.flatten.toMap
   }
 
-  // `runtimeAttributeInputs` has already adjusted for the case of a `JobDescriptor` with `DockerWithHash` appropriately.
+  // `runtimeAttributeInputs` has already adjusted for the case of a `JobDescriptor` with `DockerWithHash`.
   override lazy val dockerImageUsed: Option[String] = runtimeAttributeInputs.get(DockerValidation.instance.key).map(_.valueString)
 }
 

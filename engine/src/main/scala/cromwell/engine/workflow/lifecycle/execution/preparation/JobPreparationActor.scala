@@ -135,7 +135,8 @@ class JobPreparationActor(executionData: WorkflowExecutionActorData,
   }
 
   private def handleDockerHashFailed(data: JobPreparationHashLookupData) = {
-    val response = prepareBackendDescriptor(data.inputs, data.attributes, FloatingDockerTagWithoutHash(data.dockerHashRequest.dockerImageID.fullName), data.keyLookupResults.unscoped)
+    val floatingDockerTag = data.dockerHashRequest.dockerImageID.fullName
+    val response = prepareBackendDescriptor(data.inputs, data.attributes, FloatingDockerTagWithoutHash(floatingDockerTag), data.keyLookupResults.unscoped)
     sendResponseAndStop(response)
   }
 

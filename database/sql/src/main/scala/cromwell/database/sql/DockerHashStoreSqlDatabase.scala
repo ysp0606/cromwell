@@ -8,7 +8,7 @@ trait DockerHashStoreSqlDatabase {
   this: SqlDatabase =>
 
   /**
-    * Adds docker hash entries to the store.
+    * Adds a docker hash entry to the store.
     *
     */
   def addDockerHashStoreEntry(dockerHashStoreEntry: DockerHashStoreEntry)
