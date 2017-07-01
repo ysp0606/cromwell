@@ -355,7 +355,7 @@ workflow release_cromwell {
     }
   }
   
-  File cromwellJar = release_cromwell.executionDir + "/target/scala-2.11/cromwell-" + cromwellPrep.version + ".jar"
+  File cromwellJar = release_cromwell.executionDir + "/target/scala-2.12/cromwell-" + cromwellPrep.version + ".jar"
   # Version that was just released
   Int cromwellVersionAsInt = cromwellPrep.version
   # Previous version

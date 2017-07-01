@@ -15,7 +15,7 @@ object CustomRetryParams {
     isFatal = throwableToFalse
   )
 
-  def throwableToFalse(t: Throwable) = false
+  def throwableToFalse(t: Throwable ) = !t.isInstanceOf[Throwable] // 2.12+'s unused var check doesn't abide just saying false
 }
 
 case class CustomRetryParams(timeout: Duration,

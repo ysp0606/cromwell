@@ -66,11 +66,6 @@ object GoogleAuthMode {
 sealed trait GoogleAuthMode {
   protected lazy val log = LoggerFactory.getLogger(getClass.getSimpleName)
 
-  /**
-    * Validate the auth mode against provided options
-    */
-  def validate(options: WorkflowOptions): Unit = {()}
-
   def name: String
   // Create a Credential object from the google.api.client.auth library (https://github.com/google/google-api-java-client)
   def credential(options: WorkflowOptions)(implicit as: ActorSystem, ec: ExecutionContext): Future[Credentials]
@@ -158,11 +153,6 @@ final case class RefreshTokenMode(name: String,
     options.get(RefreshTokenOptionKey) getOrElse {
       throw new IllegalArgumentException(s"Missing parameters in workflow options: $RefreshTokenOptionKey")
     }
-  }
-
-  override def validate(options: WorkflowOptions) = {
-    extractRefreshToken(options)
-    ()
   }
 
   override def credential(options: WorkflowOptions)(implicit as: ActorSystem, ec: ExecutionContext): Future[Credentials] = {

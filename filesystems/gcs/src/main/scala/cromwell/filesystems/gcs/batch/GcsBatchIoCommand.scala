@@ -1,6 +1,5 @@
 package cromwell.filesystems.gcs.batch
 
-import com.google.api.client.http.HttpHeaders
 import com.google.api.services.storage.StorageRequest
 import com.google.api.services.storage.model.{RewriteResponse, StorageObject}
 import cromwell.core.io._
@@ -29,7 +28,7 @@ sealed trait GcsBatchIoCommand[T, U] extends IoCommand[T] {
     *   Right(newCommand) means the command is not complete and needs another request to be executed.
     * Most commands will reply with Left(value).
     */
-  def onSuccess(response: U, httpHeaders: HttpHeaders): Either[T, GcsBatchIoCommand[T, U]] = {
+  def onSuccess(response: U): Either[T, GcsBatchIoCommand[T, U]] = {
     Left(mapGoogleResponse(response))
   }
 }
@@ -55,8 +54,8 @@ case class GcsBatchCopyCommand(
     */
   def withRewriteToken(rewriteToken: String) = copy(rewriteToken = Option(rewriteToken))
   
-  override def onSuccess(response: RewriteResponse, httpHeaders: HttpHeaders) = {
-    if (response.getDone) super.onSuccess(response, httpHeaders)
+  override def onSuccess(response: RewriteResponse) = {
+    if (response.getDone) super.onSuccess(response)
     else {
       Right(withRewriteToken(response.getRewriteToken))
     }

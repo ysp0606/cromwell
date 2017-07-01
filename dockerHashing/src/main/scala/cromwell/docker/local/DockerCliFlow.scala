@@ -4,7 +4,7 @@ import java.util.concurrent.TimeoutException
 
 import akka.actor.Scheduler
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
-import akka.stream.{ActorMaterializer, FlowShape}
+import akka.stream.FlowShape
 import cromwell.docker.DockerHashActor._
 import cromwell.docker.{DockerFlow, DockerHashActor, DockerHashResult, DockerImageIdentifierWithoutHash}
 
@@ -15,7 +15,7 @@ import scala.util.{Failure, Success}
 /**
   * A docker flow using the CLI to return docker hashes.
   */
-class DockerCliFlow(implicit ec: ExecutionContext, materializer: ActorMaterializer, scheduler: Scheduler)
+class DockerCliFlow(implicit ec: ExecutionContext, scheduler: Scheduler)
   extends DockerFlow {
 
   // If the docker cli hangs it would be difficult to debug. So timeout the first request after a short duration.
@@ -43,7 +43,10 @@ class DockerCliFlow(implicit ec: ExecutionContext, materializer: ActorMaterializ
 
     // If the hash wasn't found, `docker pull` then try a lookup a second time. If the docker pull fails for any
     // reason, the error is ignored, allowing the second lookup to return not found.
-    val dockerPull = builder.add(Flow.fromFunction(Function.tupled(DockerCliFlow.pull _)))
+    val dockerPull = builder.add(Flow.fromFunction(Function.tupled((_: DockerHashResponse, context: DockerHashContext) => {
+      DockerCliFlow.pull(context)
+    })))
+//    val dockerPull = builder.add(Flow.fromFunction(Function.tupled(DockerCliFlow.pull _)))
     val secondLookup = builder.add(Flow.fromFunction(DockerCliFlow.lookupHash))
 
     // Use either the first or second docker lookup.
@@ -111,11 +114,10 @@ object DockerCliFlow {
   /**
     * Pull the docker image referenced in context.
     *
-    * @param notUsed Output of `lookupHash`, passed in only to help creating the graph easier.
     * @param context The image to pull.
     * @return The context of our flow.
     */
-  private def pull(notUsed: DockerHashResponse, context: DockerHashContext): DockerHashContext = {
+  private def pull(context: DockerHashContext): DockerHashContext = {
     val dockerCliKey = cliKeyFromImageId(context)
     DockerHashActor.logger.info(s"Attempting to pull {}", dockerCliKey.fullName)
     val result = DockerCliClient.pull(dockerCliKey)

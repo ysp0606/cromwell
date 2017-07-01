@@ -285,7 +285,7 @@ trait RuntimeAttributesValidation[ValidatedType] {
     *
     * @return Message to return when a value is invalid.
     */
-  protected def invalidValueMessage(value: WdlValue): String = missingValueMessage
+  protected def invalidValueMessage(value: WdlValue): String = s"$missingValueMessage, received $value.valueString"
 
   /**
     * Utility method to wrap the invalidValueMessage in an ErrorOr.

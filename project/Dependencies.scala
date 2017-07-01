@@ -41,7 +41,7 @@ object Dependencies {
     "com.iheart" %% "ficus" % "1.3.0",
     "org.scalatest" %% "scalatest" % "3.0.0" % Test,
     "org.pegdown" % "pegdown" % "1.6.0" % Test,
-    "org.specs2" %% "specs2-mock" % "3.8.5" % Test
+    "org.specs2" %% "specs2-mock" % "3.9.1" % Test
   ) ++ catsDependencies :+ fs2Test
 
   private val slf4jBindingDependencies = List(
@@ -115,7 +115,7 @@ object Dependencies {
   val databaseSqlDependencies = baseDependencies ++ slickDependencies ++ dbmsDependencies ++ refinedTypeDependenciesList
 
   val coreDependencies = List(
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.6.0",
     "org.broadinstitute" %% "wdl4s" % wdl4sV,
     "org.apache.commons" % "commons-lang3" % "3.4",
     "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpV,

@@ -145,6 +145,6 @@ trait ReadLikeFunctions extends PathFactory { this: WdlStandardLibraryFunctions 
     } yield WdlArray(WdlArrayType(WdlFileType), wdlFiles)
   }
 
-  override def read_json(params: Seq[Try[WdlValue]]): Try[WdlValue] = Failure(new NotImplementedError(s"read_json() not implemented yet"))
+  override def read_json(params: Seq[Try[WdlValue]]): Try[WdlValue] = Failure(new NotImplementedError(s"read_json() not implemented yet: $params"))
 
 }

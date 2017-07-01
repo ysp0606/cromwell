@@ -3,7 +3,6 @@ package cromwell.database.migration.liquibase
 import liquibase.database.Database
 import liquibase.diff.{DiffResult, Difference, ObjectDifferences}
 import liquibase.structure.DatabaseObject
-import liquibase.structure.core.DataType
 
 import scala.collection.JavaConverters._
 
@@ -20,11 +19,6 @@ object DiffResultFilter {
     * A filter for a database object difference.
     */
   type DiffFilter = (Database, Database, DatabaseObject, Difference) => Boolean
-
-  /**
-    * The standard type filters to ignore, including interchangeable types.
-    */
-  val StandardTypeFilters: Seq[DiffFilter] = Seq(isReordered, isVarchar255, isTypeSimilar("TINYINT", "BOOLEAN"))
 
   /**
     * Filters diff results using an object filter and changed object filters. Filters that return false are removed.
@@ -81,68 +75,6 @@ object DiffResultFilter {
   }
 
   /**
-    * Checks if the difference is due to the schemas being created with our default varchar(255).
-    *
-    * @param referenceDatabase  The reference database.
-    * @param comparisonDatabase The comparison database.
-    * @param databaseObject     The database object.
-    * @param difference         The difference reported.
-    * @return True if the object is actually the same with slightly different column widths.
-    */
-  def isVarchar255(referenceDatabase: Database, comparisonDatabase: Database,
-                   databaseObject: DatabaseObject, difference: Difference): Boolean = {
-    val compared = difference.getComparedValue
-    val referenced = difference.getReferenceValue
-    compared.isInstanceOf[DataType] && referenced.isInstanceOf[DataType] && {
-      val comparedDataType = compared.asInstanceOf[DataType]
-      val referencedDataType = referenced.asInstanceOf[DataType]
-      comparedDataType.getTypeName == "VARCHAR" && referencedDataType.getTypeName == "VARCHAR" &&
-        // Our liquibase copypasta defaults VARCHAR to 255. Slick without a value defaults to 254
-        (comparedDataType.getColumnSize + referencedDataType.getColumnSize == 255 + 254)
-    }
-  }
-
-  /**
-    * Checks if the difference is due to the schemas being created with different but still similar types.
-    *
-    * Returns true if the type names are both found in the list, or if the types are the same name.
-    *
-    * @param similarTypes Types that are similar.
-    * @param referenceDatabase The reference database.
-    * @param comparisonDatabase The comparison database.
-    * @param databaseObject The database object.
-    * @param difference The difference reported.
-    * @return True if the object is actually similar based on type.
-    */
-  def isTypeSimilar(similarTypes: String*)
-                   (referenceDatabase: Database, comparisonDatabase: Database,
-                    databaseObject: DatabaseObject, difference: Difference): Boolean = {
-    val compared = difference.getComparedValue
-    val referenced = difference.getReferenceValue
-    compared.isInstanceOf[DataType] && referenced.isInstanceOf[DataType] && {
-      val comparedType = compared.asInstanceOf[DataType].getTypeName.toUpperCase
-      val referencedType = referenced.asInstanceOf[DataType].getTypeName.toUpperCase
-      similarTypes.contains(comparedType) && similarTypes.contains(referencedType.toUpperCase)
-    }
-  }
-
-  /**
-    * Checks if the difference is due to the schemas being reordered.
-    *
-    * Returns true if the type is reordered.
-    *
-    * @param referenceDatabase The reference database.
-    * @param comparisonDatabase The comparison database.
-    * @param databaseObject The database object.
-    * @param difference The difference reported.
-    * @return True if the object is actually similar based on type.
-    */
-  def isReordered(referenceDatabase: Database, comparisonDatabase: Database,
-                  databaseObject: DatabaseObject, difference: Difference): Boolean = {
-    difference.getField == "order"
-  }
-
-  /**
     * Returns true if the object is liquibase database object.
     *
     * @param database The source database.
@@ -163,6 +95,12 @@ object DiffResultFilter {
     */
   def isTableObject(tables: Seq[String])
                    (database: Database, databaseObject: DatabaseObject): Boolean = {
+    if (!database.isInstanceOf[Database]) {
+      /*
+       Just a cheesy hack so it looks like the database argument is used. Not worth rewiring everything for an
+        ancient migration
+      */
+    }
     isTableObject(tables, databaseObject)
   }
 

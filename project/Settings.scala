@@ -100,7 +100,7 @@ object Settings {
     )
   )
 
-  val ScalaVersion = "2.11.8"
+  val ScalaVersion = "2.12.2"
   val commonSettings = ReleasePlugin.projectSettings ++ testSettings ++ assemblySettings ++
     dockerSettings ++ cromwellVersionWithGit ++ publishingSettings ++ List(
     organization := "org.broadinstitute",

@@ -74,7 +74,7 @@ final case class GcsBatchCommandContext[T, U](request: GcsBatchIoCommand[T, U],
     * On success callback. Transform the request response to a stream-ready response that can complete the promise
     */
   private def onSuccessCallback(response: U, httpHeaders: HttpHeaders) = {
-    val promiseResponse: BatchResponse = request.onSuccess(response, httpHeaders) match {
+    val promiseResponse: BatchResponse = request.onSuccess(response) match {
         // Left means the command is complete, so just create the corresponding IoSuccess with the value
       case Left(responseValue) => Left(success(responseValue))
         // Right means there is a subsequent request to be executed, clone this context with the new request and a new promise

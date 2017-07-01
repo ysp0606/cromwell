@@ -17,8 +17,6 @@ trait WriteFunctions { this: WdlStandardLibraryFunctions =>
 
   private lazy val _writeDirectory = writeDirectory.createPermissionedDirectories()
 
-  def writeTempFile(path: String,prefix: String,suffix: String,content: String): String = throw new NotImplementedError("This method is not used anywhere and should be removed")
-
   private def writeContent(baseName: String, content: String): Try[WdlFile] = {
     val tmpFile = _writeDirectory / s"${baseName}_${content.md5Sum}.tmp"
 
@@ -50,5 +48,5 @@ trait WriteFunctions { this: WdlStandardLibraryFunctions =>
   override def write_object(params: Seq[Try[WdlValue]]): Try[WdlFile] = writeToTsv("write_object", params, WdlObject(Map.empty[String, WdlValue]))
   override def write_objects(params: Seq[Try[WdlValue]]): Try[WdlFile] = writeToTsv("write_objects", params, WdlArray(WdlArrayType(WdlObjectType), List.empty[WdlObject]))
   override def write_tsv(params: Seq[Try[WdlValue]]): Try[WdlFile] = writeToTsv("write_tsv", params, WdlArray(WdlArrayType(WdlStringType), List.empty[WdlValue]))
-  override def write_json(params: Seq[Try[WdlValue]]): Try[WdlFile] = Failure(new NotImplementedError(s"write_json() not implemented yet"))
+  override def write_json(params: Seq[Try[WdlValue]]): Try[WdlFile] = Failure(new NotImplementedError(s"write_json() not implemented yet: $params"))
 }
