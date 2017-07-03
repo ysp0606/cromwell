@@ -28,7 +28,6 @@ import cromwell.jobstore._
 import cromwell.services.SingletonServicesStore
 import cromwell.services.metadata.CallMetadataKeys.CallCachingKeys
 import cromwell.services.metadata.{CallMetadataKeys, MetadataJobKey, MetadataKey}
-import wdl4s.TaskOutput
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
@@ -182,7 +181,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
     case Event(hashes: CallCacheHashes, data: ResponsePendingData) =>
       addHashesAndStay(data, hashes)
     case Event(hit: CacheHit, data: ResponsePendingData) =>
-      fetchCachedResults(jobDescriptorKey.call.task.outputs, hit.cacheResultId, data.withCacheHit(hit))
+      fetchCachedResults(hit.cacheResultId, data.withCacheHit(hit))
     case Event(HashError(t), data: ResponsePendingData) =>
       writeToMetadata(Map(callCachingReadResultMetadataKey -> s"Hashing Error: ${t.getMessage}"))
       disableCallCaching(Option(t))
@@ -441,13 +440,13 @@ class EngineJobExecutionActor(replyTo: ActorRef,
     }
   }
 
-  def makeFetchCachedResultsActor(callCachingEntryId: CallCachingEntryId, taskOutputs: Seq[TaskOutput]): Unit = {
+  def makeFetchCachedResultsActor(callCachingEntryId: CallCachingEntryId): Unit = {
     context.actorOf(FetchCachedResultsActor.props(callCachingEntryId, self, new CallCache(SingletonServicesStore.databaseInterface)))
     ()
   }
 
-  private def fetchCachedResults(taskOutputs: Seq[TaskOutput], callCachingEntryId: CallCachingEntryId, data: ResponsePendingData) = {
-    makeFetchCachedResultsActor(callCachingEntryId, taskOutputs)
+  private def fetchCachedResults(callCachingEntryId: CallCachingEntryId, data: ResponsePendingData) = {
+    makeFetchCachedResultsActor(callCachingEntryId)
     goto(FetchingCachedOutputsFromDatabase) using data
   }
 
@@ -455,7 +454,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
     factory.cacheHitCopyingActorProps match {
       case Some(propsMaker) =>
         val backendCacheHitCopyingActorProps = propsMaker(data.jobDescriptor, initializationData, serviceRegistryActor, ioActor)
-        val cacheHitCopyActor = context.actorOf(backendCacheHitCopyingActorProps, buildCacheHitCopyingActorName(data.jobDescriptor, cacheResultId))
+        val cacheHitCopyActor = context.actorOf(backendCacheHitCopyingActorProps, buildCacheHitCopyingActorName(cacheResultId))
         cacheHitCopyActor ! CopyOutputsCommand(wdlValueSimpletons, jobDetritusFiles, returnCode)
         replyTo ! JobRunning(data.jobDescriptor.key, data.jobDescriptor.inputDeclarations, None)
         goto(BackendIsCopyingCachedOutputs)
@@ -469,7 +468,7 @@ class EngineJobExecutionActor(replyTo: ActorRef,
   }
 
   private def runJob(data: ResponsePendingData) = {
-    val backendJobExecutionActor = context.actorOf(data.bjeaProps, buildJobExecutionActorName(data.jobDescriptor))
+    val backendJobExecutionActor = context.actorOf(data.bjeaProps, buildJobExecutionActorName)
     val message = if (restarting) RecoverJobCommand else ExecuteJobCommand
     backendJobExecutionActor ! message
     replyTo ! JobRunning(data.jobDescriptor.key, data.jobDescriptor.inputDeclarations, Option(backendJobExecutionActor))
@@ -506,11 +505,9 @@ class EngineJobExecutionActor(replyTo: ActorRef,
     }
   }
 
-  private def buildJobExecutionActorName(jobDescriptor: BackendJobDescriptor) = {
-    s"$workflowIdForLogging-BackendJobExecutionActor-$jobTag"
-  }
+  private def buildJobExecutionActorName = s"$workflowIdForLogging-BackendJobExecutionActor-$jobTag"
 
-  private def buildCacheHitCopyingActorName(jobDescriptor: BackendJobDescriptor, cacheResultId: CallCachingEntryId) = {
+  private def buildCacheHitCopyingActorName(cacheResultId: CallCachingEntryId) = {
     s"$workflowIdForLogging-BackendCacheHitCopyingActor-$jobTag-${cacheResultId.id}"
   }
 

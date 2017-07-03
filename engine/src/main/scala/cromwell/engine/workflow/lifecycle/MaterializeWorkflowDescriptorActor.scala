@@ -207,7 +207,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
 
     (namespaceValidation |@| labelsValidation).tupled flatMap { case (namespace, labels) =>
       pushWfNameMetadataService(namespace.workflow.unqualifiedName)
-      publishLabelsToMetadata(id, namespace.workflow.unqualifiedName, labels)
+      publishLabelsToMetadata(id, labels)
       buildWorkflowDescriptor(id, sourceFiles, namespace, workflowOptions, labels, conf, pathBuilders)
     }
   }
@@ -220,7 +220,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
     serviceRegistryActor ! PutMetadataAction(nameEvent)
   }
 
-  private def publishLabelsToMetadata(rootWorkflowId: WorkflowId, unqualifiedName: String, labels: Labels): Unit = {
+  private def publishLabelsToMetadata(rootWorkflowId: WorkflowId, labels: Labels): Unit = {
     val defaultLabel = "cromwell-workflow-id" -> s"cromwell-$rootWorkflowId"
     val customLabels = labels.asMap
     labelsToMetadata(customLabels + defaultLabel, rootWorkflowId)
@@ -280,7 +280,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
       coercedInputs <- validateCoercedInputs(rawInputs, namespace)
       coercedValidatedFileInputs <- validateWdlFiles(coercedInputs)
       _ = pushWfInputsToMetadataService(coercedValidatedFileInputs)
-      evaluatedWorkflowsDeclarations <- validateDeclarations(namespace, workflowOptions, coercedValidatedFileInputs, pathBuilders)
+      evaluatedWorkflowsDeclarations <- validateDeclarations(namespace, coercedValidatedFileInputs, pathBuilders)
       declarationsAndInputs <- checkTypes(evaluatedWorkflowsDeclarations ++ coercedValidatedFileInputs)
       backendDescriptor = BackendWorkflowDescriptor(id, namespace.workflow, declarationsAndInputs, workflowOptions, labels)
     } yield EngineWorkflowDescriptor(namespace, backendDescriptor, backendAssignments, failureMode, pathBuilders, callCachingMode)
@@ -345,7 +345,6 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
   }
 
   private def validateDeclarations(namespace: WdlNamespaceWithWorkflow,
-                                   options: WorkflowOptions,
                                    coercedInputs: WorkflowCoercedInputs,
                                    pathBuilders: List[PathBuilder]): ErrorOr[WorkflowCoercedInputs] = {
     namespace.staticDeclarationsRecursive(coercedInputs, new WdlFunctions(pathBuilders)) match {

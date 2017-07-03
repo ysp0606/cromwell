@@ -21,15 +21,15 @@ object TesRuntimeAttributes {
   val DockerWorkingDirKey = "dockerWorkingDir"
   val DiskSizeKey = "disk"
 
-  private def cpuValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[Int] = CpuValidation.optional
+  private def cpuValidation: OptionalRuntimeAttributesValidation[Int] = CpuValidation.optional
 
   private def failOnStderrValidation(runtimeConfig: Option[Config]) = FailOnStderrValidation.default(runtimeConfig)
 
   private def continueOnReturnCodeValidation(runtimeConfig: Option[Config]) = ContinueOnReturnCodeValidation.default(runtimeConfig)
 
-  private def diskSizeValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[MemorySize] = MemoryValidation.optional(DiskSizeKey)
+  private def diskSizeValidation: OptionalRuntimeAttributesValidation[MemorySize] = MemoryValidation.optional(DiskSizeKey)
 
-  private def memoryValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[MemorySize] = MemoryValidation.optional(RuntimeAttributesKeys.MemoryKey)
+  private def memoryValidation: OptionalRuntimeAttributesValidation[MemorySize] = MemoryValidation.optional(RuntimeAttributesKeys.MemoryKey)
 
   private val dockerValidation: RuntimeAttributesValidation[String] = DockerValidation.instance
 
@@ -37,9 +37,9 @@ object TesRuntimeAttributes {
 
   def runtimeAttributesBuilder(backendRuntimeConfig: Option[Config]): StandardValidatedRuntimeAttributesBuilder =
     StandardValidatedRuntimeAttributesBuilder.default(backendRuntimeConfig).withValidation(
-      cpuValidation(backendRuntimeConfig),
-      memoryValidation(backendRuntimeConfig),
-      diskSizeValidation(backendRuntimeConfig),
+      cpuValidation,
+      memoryValidation,
+      diskSizeValidation,
       dockerValidation,
       dockerWorkingDirValidation
     )
@@ -47,9 +47,9 @@ object TesRuntimeAttributes {
   def apply(validatedRuntimeAttributes: ValidatedRuntimeAttributes, backendRuntimeConfig: Option[Config]): TesRuntimeAttributes = {
     val docker: String = RuntimeAttributesValidation.extract(dockerValidation, validatedRuntimeAttributes)
     val dockerWorkingDir: Option[String] = RuntimeAttributesValidation.extractOption(dockerWorkingDirValidation.key, validatedRuntimeAttributes)
-    val cpu: Option[Int] = RuntimeAttributesValidation.extractOption(cpuValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
-    val memory: Option[MemorySize] = RuntimeAttributesValidation.extractOption(memoryValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
-    val disk: Option[MemorySize] = RuntimeAttributesValidation.extractOption(diskSizeValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
+    val cpu: Option[Int] = RuntimeAttributesValidation.extractOption(cpuValidation.key, validatedRuntimeAttributes)
+    val memory: Option[MemorySize] = RuntimeAttributesValidation.extractOption(memoryValidation.key, validatedRuntimeAttributes)
+    val disk: Option[MemorySize] = RuntimeAttributesValidation.extractOption(diskSizeValidation.key, validatedRuntimeAttributes)
     val failOnStderr: Boolean =
       RuntimeAttributesValidation.extract(failOnStderrValidation(backendRuntimeConfig), validatedRuntimeAttributes)
     val continueOnReturnCode: ContinueOnReturnCode =

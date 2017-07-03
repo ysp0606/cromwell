@@ -365,20 +365,10 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
 
     if (runnableCalls.nonEmpty) workflowLogger.info("Starting calls: " + runnableCalls.mkString(", "))
 
+
     // Each process returns a Try[WorkflowExecutionDiff], which, upon success, contains potential changes to be made to the execution store.
     val diffs = runnableScopes map { scope =>
-      scope -> Try(scope match {
-        case k: CallKey if isInBypassedScope(k, _) => processBypassedScope(k)
-        case k: DeclarationKey if isInBypassedScope(k, _) => processBypassedScope(k)
-        case k: BackendJobDescriptorKey => processRunnableJob(k, data)
-        case k: ScatterKey => processRunnableScatter(k, data, isInBypassedScope(k, data))
-        case k: ConditionalKey => processRunnableConditional(k, data)
-        case k: CollectorKey => processRunnableCollector(k, data, isInBypassedScope(k, data))
-        case k: SubWorkflowKey => processRunnableSubWorkflow(k, data)
-        case k: StaticDeclarationKey => processRunnableStaticDeclaration(k)
-        case k: DynamicDeclarationKey => processRunnableDynamicDeclaration(k, data)
-        case k => Failure(new UnsupportedOperationException(s"Unknown entry in execution store: ${k.tag}"))
-      }).flatten
+      scope -> Try(scopeToWorkflowExecutionDiff(scope, data)).flatten // FIXME: This Try/flatten seems superfluous
     } map {
       case (_, Success(value)) => Success(value)
       case (scope, Failure(throwable)) =>
@@ -434,6 +424,21 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
       Map(callKey -> (callKey.scope.outputs map { callOutput => callOutput.unqualifiedName -> JobOutput(WdlOptionalValue.none(callOutput.wdlType)) } toMap)))
     case declKey: DeclarationKey => BypassedDeclaration(declKey)
     case _ => throw new RuntimeException("Only calls and declarations might generate results when Bypassed")
+  }
+
+  private def scopeToWorkflowExecutionDiff(scope: JobKey, data: WorkflowExecutionActorData): Try[WorkflowExecutionDiff] = {
+    scope match {
+      case k: CallKey if isInBypassedScope(k, data) => processBypassedScope(k)
+      case k: DeclarationKey if isInBypassedScope(k, data) => processBypassedScope(k)
+      case k: BackendJobDescriptorKey => processRunnableJob(k, data)
+      case k: ScatterKey => processRunnableScatter(k, data, isInBypassedScope(k, data))
+      case k: ConditionalKey => processRunnableConditional(k, data)
+      case k: CollectorKey => processRunnableCollector(k, data, isInBypassedScope(k, data))
+      case k: SubWorkflowKey => processRunnableSubWorkflow(k, data)
+      case k: StaticDeclarationKey => processRunnableStaticDeclaration(k)
+      case k: DynamicDeclarationKey => processRunnableDynamicDeclaration(k, data)
+      case k => Failure(new UnsupportedOperationException(s"Unknown entry in execution store: ${k.tag}"))
+    }
   }
 
   def processRunnableStaticDeclaration(declaration: StaticDeclarationKey) = {

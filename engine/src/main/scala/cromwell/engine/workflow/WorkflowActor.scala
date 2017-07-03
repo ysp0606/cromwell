@@ -363,8 +363,8 @@ class WorkflowActor(val workflowId: WorkflowId,
   private[workflow] def makeFinalizationActor(workflowDescriptor: EngineWorkflowDescriptor, jobExecutionMap: JobExecutionMap, workflowOutputs: CallOutputs) = {
     val copyWorkflowOutputsActorProps = stateName match {
       case InitializingWorkflowState => None
-      case _ => Option(CopyWorkflowOutputsActor.props(workflowIdForLogging, ioActor, workflowDescriptor, workflowOutputs, stateData.initializationData))
-    }
+      case _ => Option(CopyWorkflowOutputsActor.props(ioActor, workflowDescriptor, workflowOutputs, stateData.initializationData))
+  }
     
     context.actorOf(WorkflowFinalizationActor.props(
       workflowId = workflowId,

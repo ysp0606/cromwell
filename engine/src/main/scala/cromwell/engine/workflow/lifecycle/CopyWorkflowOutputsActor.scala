@@ -19,9 +19,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object CopyWorkflowOutputsActor {
-  def props(workflowId: WorkflowId, ioActor: ActorRef, workflowDescriptor: EngineWorkflowDescriptor, workflowOutputs: CallOutputs,
+  def props(ioActor: ActorRef, workflowDescriptor: EngineWorkflowDescriptor, workflowOutputs: CallOutputs,
             initializationData: AllBackendInitializationData) = Props(
-    new CopyWorkflowOutputsActor(workflowId, ioActor, workflowDescriptor, workflowOutputs, initializationData)
+    new CopyWorkflowOutputsActor(ioActor, workflowDescriptor, workflowOutputs, initializationData)
   ).withDispatcher(IoDispatcher)
 }
 
