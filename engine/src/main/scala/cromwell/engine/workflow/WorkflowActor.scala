@@ -274,7 +274,7 @@ class WorkflowActor(val workflowId: WorkflowId,
   }
 
   when(WorkflowAbortingState) {
-    case Event(_: EngineLifecycleStateCompleteResponse, data @ WorkflowActorData(_, Some(_), _, _)) =>
+    case Event(_: EngineLifecycleStateCompleteResponse, data @ WorkflowActorData(_, Some(workflowDescriptor), _, _)) =>
       finalizeWorkflow(data, workflowDescriptor, Map.empty, Map.empty, failures = None)
     case _ => stay()
   }

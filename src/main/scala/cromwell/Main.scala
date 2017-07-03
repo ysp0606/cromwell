@@ -89,7 +89,7 @@ object Main extends App {
     try {
       Await.ready(workflowManagerSystem.shutdownActorSystem(), 30 seconds)
     } catch {
-      case timeout: TimeoutException => Console.err.println("Timed out trying to shutdown actor system")
+      case _: TimeoutException => Console.err.println("Timed out trying to shutdown actor system")
       case other: Exception => Console.err.println(s"Unexpected error trying to shutdown actor system: ${other.getMessage}")
     }
 

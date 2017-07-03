@@ -24,5 +24,7 @@ object Obsolete {
     def newTemporaryDirectory(prefix: String = ""): DefaultPath = {
       DefaultPath(better.files.File.newTemporaryDirectory(prefix).path)
     }
+
+    def apply(path: Path) = path
   }
 }
