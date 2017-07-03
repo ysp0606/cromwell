@@ -69,6 +69,7 @@ trait BackendWorkflowInitializationActor extends BackendWorkflowLifecycleActor w
     * return `true` in both cases.
     */
   protected def continueOnReturnCodePredicate(valueRequired: Boolean)(wdlExpressionMaybe: Option[WdlValue]): Boolean = {
+    log.debug(s"BackendWorkflowInitializationActor($valueRequired)($wdlExpressionMaybe)")
     ContinueOnReturnCodeValidation.default(configurationDescriptor.backendRuntimeConfig).validateOptionalExpression(wdlExpressionMaybe)
   }
 

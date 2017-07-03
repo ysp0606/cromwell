@@ -120,9 +120,9 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
       pushFailedCallMetadata(jobKey, returnCode, reason, retryableFailure = false)
       handleNonRetryableFailure(stateData, jobKey, reason, Map.empty)
       // Job Retryable
-    case Event(JobFailedRetryableResponse(jobKey, reason, returnCode), _) =>
+    case Event(JobFailedRetryableResponse(jobKey, reason, _), _) =>
       pushFailedCallMetadata(jobKey, None, reason, retryableFailure = true)
-      handleRetryableFailure(jobKey, reason, returnCode)
+      handleRetryableFailure(jobKey)
       // Sub Workflow - sub workflow failures are always non retryable
     case Event(SubWorkflowFailedResponse(jobKey, descendantJobKeys, reason), stateData) =>
       pushFailedCallMetadata(jobKey, None, reason, retryableFailure = false)
@@ -238,14 +238,14 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
       .removeCallExecutionActor(failedJobKey)
       .addExecutions(jobExecutionMap)
     
-    handleExecutionFailure(failedJobKey, newData, reason, jobExecutionMap)
+    handleExecutionFailure(failedJobKey, newData, reason)
   }
   
   private def handleDeclarationEvaluationFailure(declarationKey: DeclarationKey, reason: Throwable, stateData: WorkflowExecutionActorData) = {
-    handleExecutionFailure(declarationKey, stateData, reason, Map.empty)
+    handleExecutionFailure(declarationKey, stateData, reason)
   }
   
-  private def handleExecutionFailure(failedJobKey: JobKey, data: WorkflowExecutionActorData, reason: Throwable, jobExecutionMap: JobExecutionMap) = {
+  private def handleExecutionFailure(failedJobKey: JobKey, data: WorkflowExecutionActorData, reason: Throwable) = {
     val newData = data.executionFailed(failedJobKey)
     
     if (workflowDescriptor.failureMode == ContinueWhilePossible) {
@@ -302,7 +302,7 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
     goto(responseAndState.finalState) using data
   }
 
-  private def handleRetryableFailure(jobKey: BackendJobDescriptorKey, reason: Throwable, returnCode: Option[Int]) = {
+  private def handleRetryableFailure(jobKey: BackendJobDescriptorKey) = {
     val newJobKey = jobKey.copy(attempt = jobKey.attempt + 1)
     workflowLogger.info(s"Retrying job execution for ${newJobKey.tag}")
     /*  Currently, we update the status of the old key to RetryableFailure, and add a new entry (with the #attempts incremented by 1)
@@ -368,8 +368,8 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
     // Each process returns a Try[WorkflowExecutionDiff], which, upon success, contains potential changes to be made to the execution store.
     val diffs = runnableScopes map { scope =>
       scope -> Try(scope match {
-        case k: CallKey if isInBypassedScope(k, data) => processBypassedScope(k, data)
-        case k: DeclarationKey if isInBypassedScope(k, data) => processBypassedScope(k, data)
+        case k: CallKey if isInBypassedScope(k, _) => processBypassedScope(k)
+        case k: DeclarationKey if isInBypassedScope(k, _) => processBypassedScope(k)
         case k: BackendJobDescriptorKey => processRunnableJob(k, data)
         case k: ScatterKey => processRunnableScatter(k, data, isInBypassedScope(k, data))
         case k: ConditionalKey => processRunnableConditional(k, data)
@@ -424,7 +424,7 @@ case class WorkflowExecutionActor(workflowDescriptor: EngineWorkflowDescriptor,
     result
   }
 
-  def processBypassedScope(jobKey: JobKey, data: WorkflowExecutionActorData): Try[WorkflowExecutionDiff] = {
+  def processBypassedScope(jobKey: JobKey): Try[WorkflowExecutionDiff] = {
     self ! bypassedScopeResults(jobKey)
     Success(WorkflowExecutionDiff(Map(jobKey -> ExecutionStatus.Running)))
   }

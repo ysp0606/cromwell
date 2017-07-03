@@ -1,6 +1,6 @@
 package cromwell.engine.io.nio
 
-import akka.actor.{ActorSystem, Scheduler}
+import akka.actor.ActorSystem
 import akka.stream.scaladsl.Flow
 import cromwell.core.io._
 import cromwell.core.path.{DefaultPath, Path}
@@ -16,7 +16,7 @@ import scala.io.Codec
 /**
   * Flow that executes IO operations by calling java.nio.Path methods
   */
-class NioFlow(parallelism: Int, scheduler: Scheduler, nbAttempts: Int = IoActor.MaxAttemptsNumber)(implicit ec: ExecutionContext, actorSystem: ActorSystem) {
+class NioFlow(parallelism: Int, nbAttempts: Int = IoActor.MaxAttemptsNumber)(implicit ec: ExecutionContext, actorSystem: ActorSystem) {
   private val processCommand: DefaultCommandContext[_] => Future[IoResult] = commandContext => {
     val operationResult = Retry.withRetry(
       () => handleSingleCommand(commandContext.request),

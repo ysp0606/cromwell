@@ -2,7 +2,6 @@ package cromwell.backend.impl.sfs.config
 
 import java.io.FileNotFoundException
 
-import akka.event.LoggingAdapter
 import com.typesafe.config.Config
 import cromwell.backend.standard.StandardInitializationData
 import cromwell.backend.standard.callcaching.StandardFileHashingActor.SingleFileHashRequest
@@ -39,7 +38,7 @@ abstract class ConfigHashingStrategy {
   protected lazy val checkSiblingMessage: String =
     if (checkSiblingMd5) "Check first for sibling md5 and if not found " else ""
 
-  def getHash(request: SingleFileHashRequest, log: LoggingAdapter): Try[String] = {
+  def getHash(request: SingleFileHashRequest): Try[String] = {
     def usingStandardInitData(initData: StandardInitializationData) = {
       val pathBuilders = initData.workflowPaths.pathBuilders
       val file = PathFactory.buildPath(request.file.valueString, pathBuilders).followSymbolicLinks

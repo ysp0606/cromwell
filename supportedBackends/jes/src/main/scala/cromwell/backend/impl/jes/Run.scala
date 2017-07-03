@@ -29,8 +29,7 @@ object Run {
                              projectId: String,
                              computeServiceAccount: String,
                              labels: Labels,
-                             preemptible: Boolean,
-                             genomicsInterface: Genomics): RunPipelineRequest = {
+                             preemptible: Boolean): RunPipelineRequest = {
 
     lazy val workflow = jobDescriptor.workflowDescriptor
     val pipelineInfoBuilder = if (preemptible) PreemptibleJesPipelineInfoBuilder else NonPreemptibleJesPipelineInfoBuilder

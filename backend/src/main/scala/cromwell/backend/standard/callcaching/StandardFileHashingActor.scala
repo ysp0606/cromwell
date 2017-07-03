@@ -58,7 +58,10 @@ abstract class StandardFileHashingActor(standardParams: StandardFileHashingActor
   override lazy val serviceRegistryActor: ActorRef = standardParams.serviceRegistryActor
   override lazy val configurationDescriptor: BackendConfigurationDescriptor = standardParams.configurationDescriptor
 
-  def customHashStrategy(fileRequest: SingleFileHashRequest): Option[Try[String]] = None
+  def customHashStrategy(fileRequest: SingleFileHashRequest): Option[Try[String]] = {
+    log.debug(s"customHashStrategy: $fileRequest")
+    None
+  }
 
   def fileHashingReceive: Receive = {
     // Hash Request
@@ -72,11 +75,11 @@ abstract class StandardFileHashingActor(standardParams: StandardFileHashingActor
       }
 
     // Hash Success
-    case (fileHashRequest: SingleFileHashRequest, response @ IoSuccess(_, result: String)) =>
+    case (fileHashRequest: SingleFileHashRequest, _ @ IoSuccess(_, result: String)) =>
       context.parent ! FileHashResponse(HashResult(fileHashRequest.hashKey, HashValue(result)))
 
     // Hash Failure
-    case (fileHashRequest: SingleFileHashRequest, response @ IoFailure(_, failure: Throwable)) =>
+    case (fileHashRequest: SingleFileHashRequest, _ @ IoFailure(_, failure: Throwable)) =>
       context.parent ! HashingFailedMessage(fileHashRequest.file.value, failure)
 
     case other =>

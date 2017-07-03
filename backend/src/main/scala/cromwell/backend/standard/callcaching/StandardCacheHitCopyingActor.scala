@@ -124,7 +124,10 @@ abstract class StandardCacheHitCopyingActor(val standardParams: StandardCacheHit
   context.become(ioReceive orElse receive)
 
   /** Override this method if you want to provide an alternative way to duplicate files than copying them. */
-  protected def duplicate(copyPairs: Set[PathPair]): Option[Try[Unit]] = None
+  protected def duplicate(copyPairs: Set[PathPair]): Option[Try[Unit]] = {
+    log.debug(s"StandardCacheHitCopyingActor.duplicate($copyPairs)")
+    None
+  }
 
   when(Idle) {
     case Event(CopyOutputsCommand(simpletons, jobDetritus, returnCode), None) =>
@@ -303,7 +306,10 @@ abstract class StandardCacheHitCopyingActor(val standardParams: StandardCacheHit
                                      originalSimpletons: Seq[WdlValueSimpleton],
                                      newOutputs: CallOutputs,
                                      originalDetritus:  Map[String, String],
-                                     newDetritus: Map[String, Path]): List[Set[IoCommand[_]]] = List.empty
+                                     newDetritus: Map[String, Path]): List[Set[IoCommand[_]]] = {
+    log.debug(s"StandardCacheHitCopyingActor.additionalIoCommands($sourceCallRootPath, $originalSimpletons, $newOutputs, $originalDetritus, $newDetritus)")
+    List.empty
+  }
 
   override protected def onTimeout(message: Any, to: ActorRef): Unit = {
     val exceptionMessage = message match {

@@ -19,7 +19,15 @@ trait BackendLifecycleActorFactory {
   def workflowInitializationActorProps(workflowDescriptor: BackendWorkflowDescriptor,
                                        ioActor: ActorRef,
                                        calls: Set[TaskCall],
-                                       serviceRegistryActor: ActorRef): Option[Props] = None
+                                       serviceRegistryActor: ActorRef): Option[Props] = {
+    // Terrible hack to provide an empty default impl but get past compiler checks for unused params
+    (workflowDescriptor, ioActor, calls, serviceRegistryActor) match {
+      case (_: BackendWorkflowDescriptor, _: ActorRef, _: Set[TaskCall], _: ActorRef) => // no op
+      case _ => throw new IllegalStateException("Unpossible, programmer error")
+    }
+
+    None
+  }
 
   /* ****************************** */
   /*          Job Execution         */
@@ -42,7 +50,14 @@ trait BackendLifecycleActorFactory {
                                      calls: Set[TaskCall],
                                      jobExecutionMap: JobExecutionMap,
                                      workflowOutputs: CallOutputs,
-                                     initializationData: Option[BackendInitializationData]): Option[Props] = None
+                                     initializationData: Option[BackendInitializationData]): Option[Props] = {
+    // Terrible hack to provide an empty default impl but get past compiler checks for unused params
+    (workflowDescriptor, ioActor, calls, jobExecutionMap, workflowOutputs, initializationData) match {
+      case (_: BackendWorkflowDescriptor, _: ActorRef, _: Set[TaskCall], _: JobExecutionMap, _: CallOutputs, _: Option[BackendInitializationData]) => // no op
+      case _ => throw new IllegalStateException("Unpossible, programmer error")
+    }
+    None
+  }
 
   /* ****************************** */
   /*           Call Caching         */
@@ -69,17 +84,36 @@ trait BackendLifecycleActorFactory {
 
   def expressionLanguageFunctions(workflowDescriptor: BackendWorkflowDescriptor,
                                   jobKey: BackendJobDescriptorKey,
-                                  initializationData: Option[BackendInitializationData]): WdlStandardLibraryFunctions = PureStandardLibraryFunctions
+                                  initializationData: Option[BackendInitializationData]): WdlStandardLibraryFunctions = {
+    // Terrible hack to provide an empty default impl but get past compiler checks for unused params
+    (workflowDescriptor, jobKey, initializationData) match {
+      case (_: BackendWorkflowDescriptor, _: BackendJobDescriptorKey, _: Option[BackendInitializationData]) => // no op
+      case _ => throw new IllegalStateException("Unpossible, programmer error")
+    }
+
+    PureStandardLibraryFunctions
+  }
 
   def getExecutionRootPath(workflowDescriptor: BackendWorkflowDescriptor, backendConfig: Config, initializationData: Option[BackendInitializationData]): Path = {
+    // Terrible hack to provide an empty default impl but get past compiler checks for unused params
+    if (!initializationData.isInstanceOf[Option[BackendInitializationData]]) throw new IllegalStateException("Unpossible, programmer error")
+
     new WorkflowPathsWithDocker(workflowDescriptor, backendConfig).executionRoot
   }
 
   def getWorkflowExecutionRootPath(workflowDescriptor: BackendWorkflowDescriptor, backendConfig: Config, initializationData: Option[BackendInitializationData]): Path = {
+    // Terrible hack to provide an empty default impl but get past compiler checks for unused params
+    if (!initializationData.isInstanceOf[Option[BackendInitializationData]]) throw new IllegalStateException("Unpossible, programmer error")
+
     new WorkflowPathsWithDocker(workflowDescriptor, backendConfig).workflowRoot
   }
 
-  def runtimeAttributeDefinitions(initializationDataOption: Option[BackendInitializationData]): Set[RuntimeAttributeDefinition] = Set.empty
+  def runtimeAttributeDefinitions(initializationDataOption: Option[BackendInitializationData]): Set[RuntimeAttributeDefinition] = {
+    // Terrible hack to provide an empty default impl but get past compiler checks for unused params
+    if (!initializationDataOption.isInstanceOf[Option[BackendInitializationData]]) throw new IllegalStateException("Unpossible, programmer error")
+
+    Set.empty
+  }
 
   /**
     * A set of KV store keys that this backend requests that the engine lookup before running each job.
@@ -90,5 +124,10 @@ trait BackendLifecycleActorFactory {
    * Returns credentials that can be used to authenticate to a docker registry server
    * in order to obtain a docker hash.
    */
-  def dockerHashCredentials(initializationDataOption: Option[BackendInitializationData]): List[Any] = List.empty
+  def dockerHashCredentials(initializationDataOption: Option[BackendInitializationData]): List[Any] = {
+    // Terrible hack to provide an empty default impl but get past compiler checks for unused params
+    if (!initializationDataOption.isInstanceOf[Option[BackendInitializationData]]) throw new IllegalStateException("Unpossible, programmer error")
+
+    List.empty
+  }
 }

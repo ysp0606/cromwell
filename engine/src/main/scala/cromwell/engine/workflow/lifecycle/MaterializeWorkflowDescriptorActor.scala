@@ -182,7 +182,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
   }
 
   private def workflowInitializationFailed(errors: NonEmptyList[String], replyTo: ActorRef) = {
-    sender() ! MaterializeWorkflowDescriptorFailureResponse(
+    replyTo ! MaterializeWorkflowDescriptorFailureResponse(
       new IllegalArgumentException with MessageAggregation {
         val exceptionContext = "Workflow input processing failed"
         val errorMessages = errors.toList

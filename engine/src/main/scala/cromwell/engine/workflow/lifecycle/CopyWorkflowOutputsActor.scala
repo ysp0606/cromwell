@@ -25,7 +25,7 @@ object CopyWorkflowOutputsActor {
   ).withDispatcher(IoDispatcher)
 }
 
-class CopyWorkflowOutputsActor(workflowId: WorkflowId, override val ioActor: ActorRef, val workflowDescriptor: EngineWorkflowDescriptor, workflowOutputs: CallOutputs,
+class CopyWorkflowOutputsActor(override val ioActor: ActorRef, val workflowDescriptor: EngineWorkflowDescriptor, workflowOutputs: CallOutputs,
                                initializationData: AllBackendInitializationData)
   extends Actor with ActorLogging with PathFactory with AsyncIo with GcsBatchCommandBuilder {
 

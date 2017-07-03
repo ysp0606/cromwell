@@ -63,12 +63,12 @@ object JesAttributes {
     val configKeys = backendConfig.entrySet().toSet map { entry: java.util.Map.Entry[String, ConfigValue] => entry.getKey }
     warnNotRecognized(configKeys, jesKeys, context, Logger)
 
-    def warnDeprecated(keys: Set[String], deprecated: Map[String, String], context: String, logger: Logger) = {
+    def warnDeprecated(keys: Set[String], deprecated: Map[String, String], logger: Logger) = {
       val deprecatedKeys = keys.intersect(deprecated.keySet)
       deprecatedKeys foreach { key => logger.warn(s"Found deprecated configuration key $key, replaced with ${deprecated.get(key)}") }
     }
 
-    warnDeprecated(configKeys, deprecatedJesKeys, context, Logger)
+    warnDeprecated(configKeys, deprecatedJesKeys, Logger)
 
     val project: ErrorOr[String] = validate { backendConfig.as[String]("project") }
     val executionBucket: ErrorOr[String] = validate { backendConfig.as[String]("root") }

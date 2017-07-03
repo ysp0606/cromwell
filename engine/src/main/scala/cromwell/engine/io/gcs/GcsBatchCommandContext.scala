@@ -47,8 +47,8 @@ final case class GcsBatchCommandContext[T, U](request: GcsBatchIoCommand[T, U],
     * Json batch call back for a batched request
     */
   lazy val callback: JsonBatchCallback[U] = new JsonBatchCallback[U]() {
-    def onSuccess(response: U, httpHeaders: HttpHeaders) = onSuccessCallback(response, httpHeaders)
-    def onFailure(googleJsonError: GoogleJsonError, httpHeaders: HttpHeaders) = onFailureCallback(googleJsonError, httpHeaders)
+    def onSuccess(response: U, httpHeaders: HttpHeaders) = onSuccessCallback(response)
+    def onFailure(googleJsonError: GoogleJsonError, httpHeaders: HttpHeaders) = onFailureCallback(googleJsonError)
   }
 
   /**
@@ -73,7 +73,7 @@ final case class GcsBatchCommandContext[T, U](request: GcsBatchIoCommand[T, U],
   /**
     * On success callback. Transform the request response to a stream-ready response that can complete the promise
     */
-  private def onSuccessCallback(response: U, httpHeaders: HttpHeaders) = {
+  private def onSuccessCallback(response: U) = {
     val promiseResponse: BatchResponse = request.onSuccess(response) match {
         // Left means the command is complete, so just create the corresponding IoSuccess with the value
       case Left(responseValue) => Left(success(responseValue))
@@ -88,7 +88,7 @@ final case class GcsBatchCommandContext[T, U](request: GcsBatchIoCommand[T, U],
   /**
     * On failure callback. Fail the promise with a StorageException
     */
-  private def onFailureCallback(googleJsonError: GoogleJsonError, httpHeaders: HttpHeaders) = {
+  private def onFailureCallback(googleJsonError: GoogleJsonError) = {
     promise.tryFailure(new StorageException(googleJsonError))
     ()
   }

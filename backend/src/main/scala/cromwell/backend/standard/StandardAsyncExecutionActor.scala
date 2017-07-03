@@ -141,7 +141,10 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @param wdlGlobFile The glob.
     * @return The parent directory for writing the wdl glob.
     */
-  def globParentDirectory(wdlGlobFile: WdlGlobFile): Path = commandDirectory
+  def globParentDirectory(wdlGlobFile: WdlGlobFile): Path = {
+    log.debug(s"StandardAsyncExecutionActor.globParentDirectory($wdlGlobFile)")
+    commandDirectory
+  }
 
   /**
     * Returns the shell scripting for hard linking the glob results using ln.
@@ -252,6 +255,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @return the execution handle for the job.
     */
   def executeAsync()(implicit ec: ExecutionContext): Future[ExecutionHandle] = {
+    log.debug(s"StandardAsyncExecutionActor.executeAsync()($ec)")
     Future.fromTry(Try(execute()))
   }
 
@@ -261,7 +265,10 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @param jobId The previously recorded job id.
     * @return the execution handle for the job.
     */
-  def recover(jobId: StandardAsyncJob): ExecutionHandle = execute()
+  def recover(jobId: StandardAsyncJob): ExecutionHandle = {
+    log.debug(s"StandardAsyncExecutionActor.recover($jobId)")
+    execute()
+  }
 
   /**
     * Async recovers the specified job id, or starts a new job. The default implementation simply calls execute().
@@ -270,6 +277,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @return the execution handle for the job.
     */
   def recoverAsync(jobId: StandardAsyncJob)(implicit ec: ExecutionContext): Future[ExecutionHandle] = {
+    jobLogger.debug(s"StandardAsyncExecutionActor.recoverAsync($jobId)($ec)")
     Future.fromTry(Try(recover(jobId)))
   }
 
@@ -280,7 +288,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @return The status of the job.
     */
   def pollStatus(handle: StandardAsyncPendingExecutionHandle): StandardAsyncRunStatus = {
-    throw new NotImplementedError(s"Neither pollStatus nor pollStatusAsync implemented by $getClass")
+    throw new NotImplementedError(s"Neither pollStatus nor pollStatusAsync implemented by $getClass: $handle")
   }
 
   /**
@@ -289,8 +297,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @param handle The handle of the running job.
     * @return The status of the job.
     */
-  def pollStatusAsync(handle: StandardAsyncPendingExecutionHandle)
-                     (implicit ec: ExecutionContext): Future[StandardAsyncRunStatus] = {
+  def pollStatusAsync(handle: StandardAsyncPendingExecutionHandle): Future[StandardAsyncRunStatus] = {
     Future.fromTry(Try(pollStatus(handle)))
   }
 
@@ -321,7 +328,10 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @param runStatus The terminal run status, as defined by isTerminal.
     * @return The execution events.
     */
-  def getTerminalEvents(runStatus: StandardAsyncRunStatus): Seq[ExecutionEvent] = Seq.empty
+  def getTerminalEvents(runStatus: StandardAsyncRunStatus): Seq[ExecutionEvent] = {
+    log.debug(s"StandardAsyncExecutionActor.getTerminalEvents($runStatus)")
+    Seq.empty
+  }
 
   /**
     * Returns true if the status represents a success.
@@ -329,7 +339,10 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @param runStatus The run status.
     * @return True if the job is a success.
     */
-  def isSuccess(runStatus: StandardAsyncRunStatus): Boolean = true
+  def isSuccess(runStatus: StandardAsyncRunStatus): Boolean = {
+    log.debug(s"StandardAsyncExecutionActor.isSuccess($runStatus)")
+    true
+  }
 
   /**
     * Returns any custom metadata from the polled status.
@@ -337,7 +350,10 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @param runStatus The run status.
     * @return The job metadata.
     */
-  def getTerminalMetadata(runStatus: StandardAsyncRunStatus): Map[String, Any] = Map.empty
+  def getTerminalMetadata(runStatus: StandardAsyncRunStatus): Map[String, Any] = {
+    log.debug(s"StandardAsyncExecutionActor.getTerminalMetadata($runStatus)")
+    Map.empty
+  }
 
   /**
     * Attempts to abort a job when an abort signal is retrieved.
@@ -346,7 +362,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     *
     * @param jobId The job to abort.
     */
-  def tryAbort(jobId: StandardAsyncJob): Unit = {}
+  def tryAbort(jobId: StandardAsyncJob): Unit = log.debug(s"StandardAsyncExecutionActor.tryAbort($jobId)")
 
   /**
     * Returns true if when an abort signal is retrieved, the actor makes an attempt to abort and then immediately stops
@@ -449,7 +465,10 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @param exception The exception, possibly an internal instance retrieved from within a CromwellAggregatedException.
     * @return True if evaluateOutputs should be retried later.
     */
-  def retryEvaluateOutputs(exception: Exception): Boolean = false
+  def retryEvaluateOutputs(exception: Exception): Boolean = {
+    log.debug(s"StandardAsyncExecutionActor($exception)")
+    false
+  }
 
   /**
     * Process a successful run, as defined by `isSuccess`.
@@ -482,6 +501,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
   def handleExecutionFailure(runStatus: StandardAsyncRunStatus,
                              handle: StandardAsyncPendingExecutionHandle,
                              returnCode: Option[Int]): Future[ExecutionHandle] = {
+    log.debug(s"StandardAsyncExecutionActor.handleExecutionFailure($runStatus, $handle, $returnCode")
     Future.successful(FailedNonRetryableExecutionHandle(new Exception(s"Task failed for unknown reason: $runStatus"), returnCode))
   }
 

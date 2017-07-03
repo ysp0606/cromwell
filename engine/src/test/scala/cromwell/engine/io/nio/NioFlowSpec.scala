@@ -21,7 +21,7 @@ class NioFlowSpec extends TestKitSuite with AsyncFlatSpecLike with Matchers with
 
   behavior of "NioFlowSpec"
 
-  val flow = new NioFlow(1, system.scheduler)(system.dispatcher, system).flow
+  val flow = new NioFlow(1)(system.dispatcher, system).flow
   
   implicit val materializer = ActorMaterializer()
   val replyTo = mock[ActorRef]
@@ -196,7 +196,7 @@ class NioFlowSpec extends TestKitSuite with AsyncFlatSpecLike with Matchers with
 
     val testSource = Source.single(context)
 
-    val customFlow = new NioFlow(1, system.scheduler, 3)(system.dispatcher, system) {
+    val customFlow = new NioFlow(1, 3)(system.dispatcher, system) {
       private var tries = 0
       override def handleSingleCommand(ioSingleCommand: IoCommand[_]) = {
         tries += 1

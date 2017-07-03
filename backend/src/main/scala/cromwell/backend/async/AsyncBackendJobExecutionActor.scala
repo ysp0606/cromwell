@@ -111,7 +111,10 @@ trait AsyncBackendJobExecutionActor { this: Actor with ActorLogging =>
     * @param response The response from metadata service, possibly a failure to store the metadata due to a network
     *                 hiccup etc.
     */
-  protected def handleMetadataServiceResponse(sentBy: ActorRef, response: MetadataServiceResponse): Unit = {}
+  protected def handleMetadataServiceResponse(sentBy: ActorRef, response: MetadataServiceResponse): Unit = {
+    log.debug(s"AsyncBackendJobExecutionActor.handleMetadataServiceREsponse($sentBy, $response)")
+    ()
+  }
 
   /**
     * Update the ExecutionHandle

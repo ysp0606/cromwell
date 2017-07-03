@@ -164,16 +164,15 @@ trait StandardLifecycleActorFactory extends BackendLifecycleActorFactory {
 
   def workflowFinalizationActorParams(workflowDescriptor: BackendWorkflowDescriptor, ioActor: ActorRef, calls: Set[TaskCall],
                                       jobExecutionMap: JobExecutionMap, workflowOutputs: CallOutputs,
-                                      initializationDataOption: Option[BackendInitializationData]):
-  StandardFinalizationActorParams = {
+                                      initializationDataOption: Option[BackendInitializationData]): StandardFinalizationActorParams = {
+    if (!ioActor.isInstanceOf[ActorRef]) throw new IllegalStateException("Unpossible, programmer error")
     DefaultStandardFinalizationActorParams(workflowDescriptor, calls, jobExecutionMap, workflowOutputs,
       initializationDataOption, configurationDescriptor)
   }
 
   override def expressionLanguageFunctions(workflowDescriptor: BackendWorkflowDescriptor,
                                            jobKey: BackendJobDescriptorKey,
-                                           initializationDataOption: Option[BackendInitializationData]):
-  WdlStandardLibraryFunctions = {
+                                           initializationDataOption: Option[BackendInitializationData]): WdlStandardLibraryFunctions = {
     val standardInitializationData = BackendInitializationData.as[StandardInitializationData](initializationDataOption)
     val jobPaths = standardInitializationData.workflowPaths.toJobPaths(jobKey, workflowDescriptor)
     standardInitializationData.expressionFunctions(jobPaths)

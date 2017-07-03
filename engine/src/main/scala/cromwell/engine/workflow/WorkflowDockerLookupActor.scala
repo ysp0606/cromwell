@@ -84,8 +84,8 @@ class WorkflowDockerLookupActor private[workflow](workflowId: WorkflowId, val do
     // This tag has not (successfully) been looked up before, so look it up now.
     case Event(request: DockerHashRequest, data) =>
       requestDockerHash(request, data)
-    case Event(dockerResponse: DockerHashSuccessResponse, data) =>
-      persistDockerHash(dockerResponse, data)
+    case Event(dockerResponse: DockerHashSuccessResponse, _) =>
+      persistDockerHash(dockerResponse)
       stay()
     case Event(dockerResponse: DockerHashFailureResponse, data) =>
       handleLookupFailure(dockerResponse, data)
@@ -179,7 +179,7 @@ class WorkflowDockerLookupActor private[workflow](workflowId: WorkflowId, val do
     respondToAllRequests(reason, data, WorkflowDockerTerminalFailure.apply)
   }
 
-  private def persistDockerHash(response: DockerHashSuccessResponse, data: WorkflowDockerLookupActorData): Unit = {
+  private def persistDockerHash(response: DockerHashSuccessResponse): Unit = {
     val dockerHashStoreEntry = DockerHashStoreEntry(workflowId.toString, response.request.dockerImageID.fullName, response.dockerHash.algorithmAndHash)
     databaseInterface.addDockerHashStoreEntry(dockerHashStoreEntry) onComplete {
       case Success(_) => self ! DockerHashStoreSuccess(response)

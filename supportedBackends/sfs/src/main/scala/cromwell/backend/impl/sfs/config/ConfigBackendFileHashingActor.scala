@@ -21,6 +21,6 @@ class ConfigBackendFileHashingActor(standardParams: StandardFileHashingActorPara
   
   override def customHashStrategy(fileRequest: SingleFileHashRequest): Option[Try[String]] = {
     log.debug(hashingStrategy.toString)
-    Option(hashingStrategy.getHash(fileRequest, log))
+    Option(hashingStrategy.getHash(fileRequest))
   }
 }

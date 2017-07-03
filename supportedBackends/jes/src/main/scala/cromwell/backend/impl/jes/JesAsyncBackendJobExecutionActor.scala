@@ -98,14 +98,14 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
 
   private lazy val dockerConfiguration = jesConfiguration.dockerCredentials
 
-  private val previousRetryReasons: ErrorOr[PreviousRetryReasons] = PreviousRetryReasons.tryApply(jobDescriptor.prefetchedKvStoreEntries, jobDescriptor.key.attempt)
+  private val previousRetryReasons: ErrorOr[PreviousRetryReasons] = PreviousRetryReasons.tryApply(jobDescriptor.prefetchedKvStoreEntries)
 
   private lazy val jobDockerImage = jobDescriptor.maybeCallCachingEligible.dockerHash.getOrElse(runtimeAttributes.dockerImage)
   
   override lazy val dockerImageUsed: Option[String] = Option(jobDockerImage)
   
   override val preemptible: Boolean = previousRetryReasons match {
-    case Valid(PreviousRetryReasons(p, ur)) => p < maxPreemption
+    case Valid(PreviousRetryReasons(p, _)) => p < maxPreemption
     case _ => false
   }
 
@@ -128,8 +128,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     */
   private def jesInputsFromWdlFiles(jesNamePrefix: String,
                                     remotePathArray: Seq[WdlFile],
-                                    localPathArray: Seq[WdlFile],
-                                    jobDescriptor: BackendJobDescriptor): Iterable[JesInput] = {
+                                    localPathArray: Seq[WdlFile]): Iterable[JesInput] = {
     (remotePathArray zip localPathArray zipWithIndex) flatMap {
       case ((remotePath, localPath), index) =>
         Seq(JesFileInput(s"$jesNamePrefix-$index", remotePath.valueString, DefaultPathBuilder.get(localPath.valueString), workingDisk))
@@ -162,7 +161,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     }
 
     val inputs = (callInputFiles ++ writeFunctionFiles) flatMap {
-      case (name, files) => jesInputsFromWdlFiles(name, files, files.map(relativeLocalizationPath), jobDescriptor)
+      case (name, files) => jesInputsFromWdlFiles(name, files, files.map(relativeLocalizationPath))
     }
     inputs.toSet
   }
@@ -273,8 +272,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
       googleProject(jobDescriptor.workflowDescriptor),
       computeServiceAccount(jobDescriptor.workflowDescriptor),
       backendLabels,
-      preemptible,
-      initializationData.genomics
+      preemptible
     )
     logger.debug(s"Inputs:\n${stringifyMap(runPipelineParameters.getPipelineArgs.getInputs.asScala.toMap)}")
     logger.debug(s"Outputs:\n${stringifyMap(runPipelineParameters.getPipelineArgs.getOutputs.asScala.toMap)}")
@@ -330,8 +328,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
   }
 
 
-  override def pollStatusAsync(handle: JesPendingExecutionHandle)
-                              (implicit ec: ExecutionContext): Future[RunStatus] = {
+  override def pollStatusAsync(handle: JesPendingExecutionHandle): Future[RunStatus] = {
     super[JesStatusRequestClient].pollStatus(handle.runInfo.get)
   }
 
@@ -468,8 +465,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
             FailedRetryableExecutionHandle(StandardException(errorCode, msg, jobTag), jobReturnCode)
           }
         }
-      case Invalid(e) =>
-        Future.successful(FailedNonRetryableExecutionHandle(StandardException(errorCode, errorMessage, jobTag), jobReturnCode))
+      case Invalid(_) => Future.successful(FailedNonRetryableExecutionHandle(StandardException(errorCode, errorMessage, jobTag), jobReturnCode))
     }
   }
 

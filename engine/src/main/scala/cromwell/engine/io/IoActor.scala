@@ -32,7 +32,7 @@ final class IoActor(queueSize: Int, throttle: Option[Throttle])(implicit val mat
   implicit private val system = context.system
   implicit val ec = context.dispatcher
   
-  private [io] lazy val defaultFlow = new NioFlow(parallelism = 100, context.system.scheduler).flow.withAttributes(ActorAttributes.dispatcher(Dispatcher.IoDispatcher))
+  private [io] lazy val defaultFlow = new NioFlow(parallelism = 100).flow.withAttributes(ActorAttributes.dispatcher(Dispatcher.IoDispatcher))
   private [io] lazy val gcsBatchFlow = new ParallelGcsBatchFlow(parallelism = 10, batchSize = 100, context.system.scheduler).flow.withAttributes(ActorAttributes.dispatcher(Dispatcher.IoDispatcher))
   
   protected val source = Source.queue[IoCommandContext[_]](queueSize, OverflowStrategy.dropNew)
@@ -44,8 +44,8 @@ final class IoActor(queueSize: Int, throttle: Option[Throttle])(implicit val mat
     
     // Partitions requests between gcs batch, and single nio requests
     val batchPartitioner = builder.add(Partition[IoCommandContext[_]](2, {
-      case gcsBatch: GcsBatchCommandContext[_, _] => 0
-      case other => 1
+      case _: GcsBatchCommandContext[_, _] => 0
+      case _ => 1
     }))
     
     // Sub flow for batched gcs requests

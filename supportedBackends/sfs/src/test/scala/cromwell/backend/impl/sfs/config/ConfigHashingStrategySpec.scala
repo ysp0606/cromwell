@@ -91,14 +91,14 @@ class ConfigHashingStrategySpec extends FlatSpec with Matchers with TableDrivenP
       md5File.delete(swallowIOExceptions = true)
       val checkSibling = makeStrategy("path", Option(check))
 
-      checkSibling.getHash(mockRequest(withMd5, symlink = false), mock[LoggingAdapter]) shouldBe Success(expected)
+      checkSibling.getHash(mockRequest(withMd5, symlink = false)) shouldBe Success(expected)
 
       val symLinkRequest: SingleFileHashRequest = mockRequest(withMd5, symlink = true)
       val symlink = DefaultPathBuilder.get(symLinkRequest.file.valueString)
 
       symlink.isSymbolicLink shouldBe true
       DigestUtils.md5Hex(symlink.pathAsString) should not be expected
-      checkSibling.getHash(symLinkRequest, mock[LoggingAdapter]) shouldBe Success(expected)
+      checkSibling.getHash(symLinkRequest) shouldBe Success(expected)
     }
   }
 
@@ -133,13 +133,13 @@ class ConfigHashingStrategySpec extends FlatSpec with Matchers with TableDrivenP
       md5File.delete(swallowIOExceptions = true)
       val checkSibling = makeStrategy("file", Option(check))
 
-      checkSibling.getHash(mockRequest(withMd5, symlink = false), mock[LoggingAdapter]) shouldBe Success(expected)
+      checkSibling.getHash(mockRequest(withMd5, symlink = false)) shouldBe Success(expected)
 
       val symLinkRequest: SingleFileHashRequest = mockRequest(withMd5, symlink = true)
       val symlink = DefaultPathBuilder.get(symLinkRequest.file.valueString)
 
       symlink.isSymbolicLink shouldBe true
-      checkSibling.getHash(symLinkRequest, mock[LoggingAdapter]) shouldBe Success(expected)
+      checkSibling.getHash(symLinkRequest) shouldBe Success(expected)
     }
   }
 
