@@ -100,6 +100,13 @@ private[ejea] class PerTestHelper(implicit val system: ActorSystem) extends Mock
                               initializationDataOption: Option[BackendInitializationData],
                               serviceRegistryActor: ActorRef,
                               ioActor: ActorRef): Props = {
+
+      if (!jobDescriptor.isInstanceOf[BackendJobDescriptor] &&
+        initializationDataOption.isDefined &&
+        serviceRegistryActor.isInstanceOf[ActorRef] &&
+        ioActor.isInstanceOf[ActorRef]
+      ) println(s"This is just a cheesy hack to make the compiler happy over unused variables: $standardFileHashingActor")
+
       Props.empty
     }
 

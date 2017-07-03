@@ -34,7 +34,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
     val exception = new Exception("Failed to prepare inputs/attributes - part of test flow")
     val failure = Failure(exception)
     val expectedResponse = CallPreparationFailed(helper.jobKey, exception)
-    val actor = TestActorRef(helper.buildTestJobPreparationActor(null, null, null, failure, List.empty), self)
+    val actor = TestActorRef(helper.buildTestJobPreparationActor(null, null, failure, List.empty), self)
     actor ! Start
     expectMsg(expectedResponse)
     helper.workflowDockerLookupActor.expectNoMsg(100 millis)
@@ -43,7 +43,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
   it should "prepare successfully a job without docker attribute" in {
     val attributes = Map.empty[LocallyQualifiedName, WdlValue]
     val inputsAndAttributes = Success((inputs, attributes))
-    val actor = TestActorRef(helper.buildTestJobPreparationActor(null, null, null, inputsAndAttributes, List.empty), self)
+    val actor = TestActorRef(helper.buildTestJobPreparationActor(null, null, inputsAndAttributes, List.empty), self)
     actor ! Start
     expectMsgPF(5 seconds) {
       case success: BackendJobPreparationSucceeded =>
@@ -58,7 +58,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
       "docker" -> WdlString(dockerValue)
     )
     val inputsAndAttributes = Success((inputs, attributes))
-    val actor = TestActorRef(helper.buildTestJobPreparationActor(null, null, null, inputsAndAttributes, List.empty), self)
+    val actor = TestActorRef(helper.buildTestJobPreparationActor(null, null, inputsAndAttributes, List.empty), self)
     actor ! Start
     expectMsgPF(5 seconds) {
       case success: BackendJobPreparationSucceeded =>
@@ -81,7 +81,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
     val prefetchedVal2 = KvKeyLookupFailed(KvGet(helper.scopedKeyMaker(prefetchedKey2)))
     val prefetchedValues = Map(prefetchedKey1 -> prefetchedVal1, prefetchedKey2 -> prefetchedVal2)
     var keysToPrefetch = List(prefetchedKey1, prefetchedKey2)
-    val actor = TestActorRef(helper.buildTestJobPreparationActor(1 minute, 1 minutes, List.empty, inputsAndAttributes, List(prefetchedKey1, prefetchedKey2)), self)
+    val actor = TestActorRef(helper.buildTestJobPreparationActor(1 minutes, List.empty, inputsAndAttributes, List(prefetchedKey1, prefetchedKey2)), self)
     actor ! Start
 
     def respondFromKv() = {
@@ -111,7 +111,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
     val hashResult = DockerHashResult("sha256", "71cd81252a3563a03ad8daee81047b62ab5d892ebbfbf71cf53415f29c130950")
     val inputsAndAttributes = Success((inputs, attributes))
     val finalValue = "ubuntu@sha256:71cd81252a3563a03ad8daee81047b62ab5d892ebbfbf71cf53415f29c130950"
-    val actor = TestActorRef(helper.buildTestJobPreparationActor(1 minute, 1 minutes, List.empty, inputsAndAttributes, List.empty), self)
+    val actor = TestActorRef(helper.buildTestJobPreparationActor(1 minutes, List.empty, inputsAndAttributes, List.empty), self)
     actor ! Start
     helper.workflowDockerLookupActor.expectMsgClass(classOf[DockerHashRequest])
     helper.workflowDockerLookupActor.reply(DockerHashSuccessResponse(hashResult, mock[DockerHashRequest]))
@@ -129,7 +129,7 @@ class JobPreparationActorSpec extends TestKitSuite("JobPrepActorSpecSystem") wit
       "docker" -> WdlString(dockerValue)
     )
     val inputsAndAttributes = Success((inputs, attributes))
-    val actor = TestActorRef(helper.buildTestJobPreparationActor(1 minute, 1 minutes, List.empty, inputsAndAttributes, List.empty), self)
+    val actor = TestActorRef(helper.buildTestJobPreparationActor(1 minutes, List.empty, inputsAndAttributes, List.empty), self)
     actor ! Start
     helper.workflowDockerLookupActor.expectMsgClass(classOf[DockerHashRequest])
     helper.workflowDockerLookupActor.reply(WorkflowDockerLookupFailure(new Exception("Failed to get docker hash - part of test flow"), request))

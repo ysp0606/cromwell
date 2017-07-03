@@ -58,6 +58,7 @@ private[ejea] trait CanExpectHashingInitialization extends Eventually { self: En
 
 private[ejea] trait CanExpectFetchCachedResults extends Eventually { self: EngineJobExecutionActorSpec =>
   def expectFetchCachedResultsActor(expectedCallCachingEntryId: CallCachingEntryId): Unit = {
+    expectedCallCachingEntryId shouldBe a [CallCachingEntryId]
     eventually { helper.fetchCachedResultsActorCreations.hasExactlyOne should be(true) }
     helper.fetchCachedResultsActorCreations.checkIt {
       case (callCachingEntryId, _) => callCachingEntryId should be(expectedCallCachingEntryId)

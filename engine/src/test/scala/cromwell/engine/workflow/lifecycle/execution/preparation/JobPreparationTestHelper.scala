@@ -31,8 +31,7 @@ class JobPreparationTestHelper(implicit val system: ActorSystem) extends Mockito
   val workflowId = WorkflowId.randomId()
   val scopedKeyMaker: ScopedKeyMaker = key => ScopedKey(workflowId, KvJobKey("correct.horse.battery.staple", None, 1), key)
 
-  def buildTestJobPreparationActor(backpressureTimeout: FiniteDuration,
-                                   noResponseTimeout: FiniteDuration,
+  def buildTestJobPreparationActor(noResponseTimeout: FiniteDuration,
                                    dockerHashCredentials: List[Any],
                                    inputsAndAttributes: Try[(Map[Declaration, WdlValue], Map[wdl4s.LocallyQualifiedName, WdlValue])],
                                    kvStoreKeysForPrefetch: List[String]) = {
@@ -40,7 +39,6 @@ class JobPreparationTestHelper(implicit val system: ActorSystem) extends Mockito
     Props(new TestJobPreparationActor(
       kvStoreKeysForPrefetch = kvStoreKeysForPrefetch,
       dockerHashCredentialsInput = dockerHashCredentials,
-      backpressureWaitTimeInput = backpressureTimeout,
       dockerNoResponseTimeoutInput = noResponseTimeout,
       inputsAndAttributes = inputsAndAttributes,
       executionData = executionData,
@@ -54,7 +52,6 @@ class JobPreparationTestHelper(implicit val system: ActorSystem) extends Mockito
 
 private[preparation] class TestJobPreparationActor(kvStoreKeysForPrefetch: List[String],
                                                    dockerHashCredentialsInput: List[Any],
-                                                   backpressureWaitTimeInput: FiniteDuration,
                                                    dockerNoResponseTimeoutInput: FiniteDuration,
                                                    inputsAndAttributes: Try[(Map[Declaration, WdlValue], Map[wdl4s.LocallyQualifiedName, WdlValue])],
                                                    executionData: WorkflowExecutionActorData,

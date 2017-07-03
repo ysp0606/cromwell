@@ -1,7 +1,7 @@
 package cromwell.engine.workflow.lifecycle.execution.ejea
 
 private[ejea] sealed trait ExpectOne[+A] {
-  def checkIt(block: A => Any): Unit = throw new IllegalStateException("An ExpectOne must have exactly one element for checkIt to work")
+  def checkIt(block: A => Any): Unit = throw new IllegalStateException(s"An ExpectOne must have exactly one element for checkIt to work: $block")
   def hasExactlyOne: Boolean
   def foundOne[B >: A](theFoundOne: B) = this match {
     case NothingYet => GotOne(theFoundOne)

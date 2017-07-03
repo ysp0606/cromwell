@@ -19,7 +19,7 @@ trait BackendSpec extends ScalaFutures with Matchers with Mockito {
 
   implicit val defaultPatience = PatienceConfig(timeout = Span(10, Seconds), interval = Span(500, Millis))
 
-  def testWorkflow(workflow: TestWorkflow, backend: BackendJobExecutionActor, inputs: Map[String, WdlValue] = Map.empty) = {
+  def testWorkflow(workflow: TestWorkflow, backend: BackendJobExecutionActor) = {
     executeJobAndAssertOutputs(backend, workflow.expectedResponse)
   }
 
