@@ -83,14 +83,12 @@ abstract class SingleWorkflowRunnerActorSpec extends CromwellTestKitWordSpec wit
     system.actorOf(Props(new WorkflowManagerActor(params)), "WorkflowManagerActor")
   }
   
-  def createRunnerActor(sampleWdl: SampleWdl = ThreeStep, managerActor: => ActorRef = workflowManagerActor(),
-                          outputFile: => Option[Path] = None): ActorRef = {
+  def createRunnerActor(sampleWdl: SampleWdl = ThreeStep, outputFile: => Option[Path] = None): ActorRef = {
     system.actorOf(Props(new TestSingleWorkflowRunnerActor(sampleWdl.asWorkflowSources(), outputFile)))
   }
 
-  def singleWorkflowActor(sampleWdl: SampleWdl = ThreeStep, managerActor: => ActorRef = workflowManagerActor(),
-                          outputFile: => Option[Path] = None): Unit = {
-    val actorRef = createRunnerActor(sampleWdl, managerActor, outputFile)
+  def singleWorkflowActor(sampleWdl: SampleWdl = ThreeStep, outputFile: => Option[Path] = None): Unit = {
+    val actorRef = createRunnerActor(sampleWdl, outputFile)
     val futureResult = actorRef.ask(RunWorkflow)(timeout = new Timeout(TimeoutDuration))
     Await.ready(futureResult, Duration.Inf)
     ()
