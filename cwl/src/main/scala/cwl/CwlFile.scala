@@ -7,6 +7,7 @@ import shapeless.{:+:, CNil, Poly1, Witness, _}
 import CommandLineTool.BaseCommand
 import CwlType.CwlType
 import CwlVersion._
+import cwl.command.StringCommandPart
 import wom.callable.Callable.{OutputDefinition, RequiredInputDefinition}
 import wom.callable.{Callable, TaskDefinition}
 import wom.executable.Executable
@@ -114,6 +115,11 @@ case class CommandLineTool private(
         RequiredInputDefinition(FullyQualifiedName(cip.id).id, tpe)
       }.toList
 
+    def stringOrExpressionToCommandPart(soe: Option[StringOrExpression]): Option[CommandPart] = soe map {
+      case StringOrExpression.String(filename) => StringCommandPart(filename)
+      case StringOrExpression.Expression(expr) => CwlExpressionCommandPart(expr)
+    }
+
     TaskDefinition(
       id,
       commandTemplate,
@@ -124,7 +130,9 @@ case class CommandLineTool private(
       inputs,
       // TODO: This doesn't work in all cases and it feels clunky anyway - find a way to sort that out
       prefixSeparator = "#",
-      commandPartSeparator = " "
+      commandPartSeparator = " ",
+      stdoutRedirect = stringOrExpressionToCommandPart(stdout),
+      stderrRedirect = stringOrExpressionToCommandPart(stderr)
     )
   }
 

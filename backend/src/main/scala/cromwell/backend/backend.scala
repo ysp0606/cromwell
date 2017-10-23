@@ -5,12 +5,12 @@ import com.typesafe.config.Config
 import cromwell.core.WorkflowOptions.WorkflowOption
 import cromwell.core.callcaching.MaybeCallCachingEligible
 import cromwell.core.labels.Labels
-import cromwell.core.{CallKey, WorkflowId, WorkflowOptions}
+import cromwell.core.{CallKey, NoIoFunctionSet, WorkflowId, WorkflowOptions}
 import cromwell.services.keyvalue.KeyValueServiceActor.KvResponse
 import wom.callable.WorkflowDefinition
 import wom.graph.GraphNodePort.OutputPort
 import wom.graph.TaskCallNode
-import wom.values.{WomValue, WomEvaluatedCallInputs}
+import wom.values.{WomEvaluatedCallInputs, WomValue}
 
 import scala.util.Try
 
@@ -41,6 +41,9 @@ case class BackendJobDescriptor(workflowDescriptor: BackendWorkflowDescriptor,
   }
   val call = key.call
   override lazy val toString = key.mkTag(workflowDescriptor.id)
+
+  lazy val stdout = key.call.callable.instantiateStdoutFilename(inputDeclarations, NoIoFunctionSet)
+  lazy val stderr = key.call.callable.instantiateStderrFilename(inputDeclarations, NoIoFunctionSet)
 }
 
 object BackendWorkflowDescriptor {
