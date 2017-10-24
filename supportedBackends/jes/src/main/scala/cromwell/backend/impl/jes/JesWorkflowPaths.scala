@@ -5,7 +5,7 @@ import com.google.auth.Credentials
 import com.typesafe.config.Config
 import cromwell.backend.impl.jes.JesAsyncBackendJobExecutionActor.WorkflowOptionKeys
 import cromwell.backend.io.WorkflowPaths
-import cromwell.backend.{BackendJobDescriptorKey, BackendWorkflowDescriptor}
+import cromwell.backend.{BackendJobDescriptor, BackendWorkflowDescriptor}
 import cromwell.cloudsupport.gcp.gcs.GcsStorage
 import cromwell.core.WorkflowOptions
 import cromwell.core.path.{Path, PathBuilder}
@@ -59,8 +59,8 @@ case class JesWorkflowPaths(workflowDescriptor: BackendWorkflowDescriptor,
     getPath(path).get
   }
 
-  override def toJobPaths(workflowPaths: WorkflowPaths, jobKey: BackendJobDescriptorKey): JesJobPaths = {
-    new JesJobPaths(workflowPaths.asInstanceOf[JesWorkflowPaths], jobKey)
+  override def toJobPaths(workflowPaths: WorkflowPaths, jobDescriptor: BackendJobDescriptor): JesJobPaths = {
+    new JesJobPaths(workflowPaths.asInstanceOf[JesWorkflowPaths], jobDescriptor)
   }
 
   override protected def withDescriptor(workflowDescriptor: BackendWorkflowDescriptor): WorkflowPaths = this.copy(workflowDescriptor = workflowDescriptor)

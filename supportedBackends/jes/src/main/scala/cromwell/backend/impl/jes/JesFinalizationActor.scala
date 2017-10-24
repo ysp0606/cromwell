@@ -4,6 +4,7 @@ import akka.actor.ActorRef
 import cromwell.backend._
 import cromwell.backend.standard.{StandardFinalizationActor, StandardFinalizationActorParams}
 import cromwell.core.io.AsyncIo
+import cromwell.core.path.Path
 import cromwell.filesystems.gcs.batch.GcsBatchCommandBuilder
 import wom.core.CallOutputs
 import wom.graph.TaskCallNode
@@ -16,7 +17,7 @@ case class JesFinalizationActorParams
   ioActor: ActorRef,
   calls: Set[TaskCallNode],
   jesConfiguration: JesConfiguration,
-  jobExecutionMap: JobExecutionMap,
+  logPaths: Set[Path],
   workflowOutputs: CallOutputs,
   initializationDataOption: Option[BackendInitializationData]
 ) extends StandardFinalizationActorParams {

@@ -1,10 +1,12 @@
 package cromwell.backend.io
 
 import com.typesafe.config.ConfigFactory
-import cromwell.backend.{BackendConfigurationDescriptor, BackendJobDescriptorKey, BackendSpec, TestConfig}
+import cromwell.backend._
+import cromwell.backend.validation.RuntimeAttributesKeys
 import cromwell.core.path.DefaultPathBuilder
 import org.scalatest.{FlatSpec, Matchers}
 import wom.graph.TaskCallNode
+import wom.values.WomString
 
 class JobPathsSpec extends FlatSpec with Matchers with BackendSpec {
 
@@ -26,13 +28,16 @@ class JobPathsSpec extends FlatSpec with Matchers with BackendSpec {
   val backendConfig =  ConfigFactory.parseString(configString)
   val defaultBackendConfigDescriptor = BackendConfigurationDescriptor(backendConfig, TestConfig.globalConfig)
 
+  def jobDescriptor(wd: BackendWorkflowDescriptor, jobKey: BackendJobDescriptorKey) = BackendJobDescriptor(wd, jobKey, Map(RuntimeAttributesKeys.StdoutRedirect -> WomString("stdout"), RuntimeAttributesKeys.StdoutRedirect -> WomString("stderr")), null, null, null)
+
   "JobPaths" should "provide correct paths for a job" in {
 
     val wd = buildWdlWorkflowDescriptor(TestWorkflows.HelloWorld)
     val call: TaskCallNode = wd.workflow.taskCallNodes.head
     val jobKey: BackendJobDescriptorKey = BackendJobDescriptorKey(call, None, 1)
     val workflowPaths = new WorkflowPathsWithDocker(wd, backendConfig)
-    val jobPaths = new JobPathsWithDocker(workflowPaths, jobKey)
+
+    val jobPaths = new JobPathsWithDocker(workflowPaths, jobDescriptor(wd, jobKey))
     val id = wd.id
     jobPaths.callRoot.pathAsString shouldBe
       fullPath(s"local-cromwell-executions/wf_hello/$id/call-hello")
@@ -59,17 +64,17 @@ class JobPathsSpec extends FlatSpec with Matchers with BackendSpec {
       fullPath("/cromwell-executions/dock/path")
 
     val jobKeySharded: BackendJobDescriptorKey = BackendJobDescriptorKey(call, Option(0), 1)
-    val jobPathsSharded = new JobPathsWithDocker(workflowPaths, jobKeySharded)
+    val jobPathsSharded = new JobPathsWithDocker(workflowPaths, jobDescriptor(wd, jobKeySharded))
     jobPathsSharded.callExecutionRoot.pathAsString shouldBe
       fullPath(s"local-cromwell-executions/wf_hello/$id/call-hello/shard-0/execution")
 
     val jobKeyAttempt: BackendJobDescriptorKey = BackendJobDescriptorKey(call, None, 2)
-    val jobPathsAttempt = new JobPathsWithDocker(workflowPaths, jobKeyAttempt)
+    val jobPathsAttempt = new JobPathsWithDocker(workflowPaths, jobDescriptor(wd, jobKeyAttempt))
     jobPathsAttempt.callExecutionRoot.pathAsString shouldBe
       fullPath(s"local-cromwell-executions/wf_hello/$id/call-hello/attempt-2/execution")
 
     val jobKeyShardedAttempt: BackendJobDescriptorKey = BackendJobDescriptorKey(call, Option(0), 2)
-    val jobPathsShardedAttempt = new JobPathsWithDocker(workflowPaths, jobKeyShardedAttempt)
+    val jobPathsShardedAttempt = new JobPathsWithDocker(workflowPaths, jobDescriptor(wd, jobKeyShardedAttempt))
     jobPathsShardedAttempt.callExecutionRoot.pathAsString shouldBe
       fullPath(s"local-cromwell-executions/wf_hello/$id/call-hello/shard-0/attempt-2/execution")
   }

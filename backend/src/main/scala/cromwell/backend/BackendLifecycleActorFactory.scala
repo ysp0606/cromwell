@@ -63,7 +63,7 @@ trait BackendLifecycleActorFactory {
   def workflowFinalizationActorProps(workflowDescriptor: BackendWorkflowDescriptor,
                                      ioActor: ActorRef,
                                      calls: Set[TaskCallNode],
-                                     jobExecutionMap: JobExecutionMap,
+                                     logPaths: Set[Path],
                                      workflowOutputs: CallOutputs,
                                      initializationData: Option[BackendInitializationData]): Option[Props] = None
 
@@ -90,8 +90,8 @@ trait BackendLifecycleActorFactory {
 
   def backendSingletonActorProps(serviceRegistryActor: ActorRef): Option[Props] = None
 
-  def expressionLanguageFunctions(workflowDescriptor: BackendWorkflowDescriptor,
-                                  jobKey: BackendJobDescriptorKey,
+  def expressionLanguageFunctions(jobKey: BackendJobDescriptorKey,
+                                  jobDescriptor: Option[BackendJobDescriptor],
                                   initializationData: Option[BackendInitializationData]): IoFunctionSet = NoIoFunctionSet
 
   def getExecutionRootPath(workflowDescriptor: BackendWorkflowDescriptor, backendConfig: Config, initializationData: Option[BackendInitializationData]): Path = {

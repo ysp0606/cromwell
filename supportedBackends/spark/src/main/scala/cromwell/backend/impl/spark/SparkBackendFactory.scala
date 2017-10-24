@@ -22,9 +22,9 @@ case class SparkBackendFactory(name: String, configurationDescriptor: BackendCon
     SparkJobExecutionActor.props(jobDescriptor, configurationDescriptor)
   }
 
-  override def expressionLanguageFunctions(workflowDescriptor: BackendWorkflowDescriptor, jobKey: BackendJobDescriptorKey,
+  override def expressionLanguageFunctions(jobDescriptor: BackendJobDescriptor,
                                            initializationData: Option[BackendInitializationData]): IoFunctionSet = {
-    val jobPaths = JobPathsWithDocker(jobKey, workflowDescriptor, configurationDescriptor.backendConfig)
+    val jobPaths = JobPathsWithDocker(jobDescriptor, configurationDescriptor.backendConfig)
     val callContext = CallContext(
       jobPaths.callExecutionRoot,
       jobPaths.stdout.toAbsolutePath.toString,

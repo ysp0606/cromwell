@@ -154,29 +154,31 @@ trait StandardLifecycleActorFactory extends BackendLifecycleActorFactory {
   }
 
   override def workflowFinalizationActorProps(workflowDescriptor: BackendWorkflowDescriptor, ioActor: ActorRef, calls: Set[TaskCallNode],
-                                              jobExecutionMap: JobExecutionMap, workflowOutputs: CallOutputs,
+                                              logPaths: Set[Path], workflowOutputs: CallOutputs,
                                               initializationData: Option[BackendInitializationData]): Option[Props] = {
     finalizationActorClassOption map { finalizationActorClass =>
-      val params = workflowFinalizationActorParams(workflowDescriptor, ioActor, calls, jobExecutionMap, workflowOutputs,
+      val params = workflowFinalizationActorParams(workflowDescriptor, ioActor, calls, logPaths, workflowOutputs,
         initializationData)
       Props(finalizationActorClass, params).withDispatcher(BackendDispatcher)
     }
   }
 
-  def workflowFinalizationActorParams(workflowDescriptor: BackendWorkflowDescriptor, ioActor: ActorRef, calls: Set[TaskCallNode],
-                                      jobExecutionMap: JobExecutionMap, workflowOutputs: CallOutputs,
+  def workflowFinalizationActorParams(workflowDescriptor: BackendWorkflowDescriptor,
+                                      ioActor: ActorRef,
+                                      calls: Set[TaskCallNode],
+                                      logPaths: Set[Path],
+                                      workflowOutputs: CallOutputs,
                                       initializationDataOption: Option[BackendInitializationData]):
   StandardFinalizationActorParams = {
-    DefaultStandardFinalizationActorParams(workflowDescriptor, calls, jobExecutionMap, workflowOutputs,
+    DefaultStandardFinalizationActorParams(workflowDescriptor, calls, logPaths, workflowOutputs,
       initializationDataOption, configurationDescriptor)
   }
 
-  override def expressionLanguageFunctions(workflowDescriptor: BackendWorkflowDescriptor,
-                                           jobKey: BackendJobDescriptorKey,
+  override def expressionLanguageFunctions(jobDescriptor: BackendJobDescriptor,
                                            initializationDataOption: Option[BackendInitializationData]):
   IoFunctionSet = {
     val standardInitializationData = BackendInitializationData.as[StandardInitializationData](initializationDataOption)
-    val jobPaths = standardInitializationData.workflowPaths.toJobPaths(jobKey, workflowDescriptor)
+    val jobPaths = standardInitializationData.workflowPaths.toJobPaths(jobDescriptor)
     standardInitializationData.expressionFunctions(jobPaths)
   }
 

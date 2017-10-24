@@ -1,6 +1,6 @@
 package cromwell.backend.impl.jes
 
-import cromwell.backend.BackendJobDescriptorKey
+import cromwell.backend.BackendJobDescriptor
 import cromwell.backend.io.JobPaths
 import cromwell.core.path.Path
 import cromwell.services.metadata.CallMetadataKeys
@@ -11,11 +11,11 @@ object JesJobPaths {
   val JesExecParamName = "exec"
 }
 
-final case class JesJobPaths(override val workflowPaths: JesWorkflowPaths, jobKey: BackendJobDescriptorKey) extends JobPaths {
+final case class JesJobPaths(override val workflowPaths: JesWorkflowPaths, jobDescriptor: BackendJobDescriptor) extends JobPaths {
 
   val jesLogBasename = {
-    val index = jobKey.index.map(s => s"-$s").getOrElse("")
-    s"${jobKey.node.localName}$index"
+    val index = jobDescriptor.key.index.map(s => s"-$s").getOrElse("")
+    s"${jobDescriptor.key.node.localName}$index"
   }
 
   override val returnCodeFilename: String = s"$jesLogBasename-rc.txt"

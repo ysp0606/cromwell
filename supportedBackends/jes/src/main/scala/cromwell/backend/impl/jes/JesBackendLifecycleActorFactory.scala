@@ -6,6 +6,7 @@ import cromwell.backend.impl.jes.JesBackendLifecycleActorFactory._
 import cromwell.backend.impl.jes.callcaching.{JesBackendCacheHitCopyingActor, JesBackendFileHashingActor}
 import cromwell.backend.standard._
 import cromwell.backend.standard.callcaching.{StandardCacheHitCopyingActor, StandardFileHashingActor}
+import cromwell.core.path.Path
 import wom.core.CallOutputs
 import wom.graph.TaskCallNode
 
@@ -32,14 +33,14 @@ case class JesBackendLifecycleActorFactory(name: String, configurationDescriptor
   }
 
   override def workflowFinalizationActorParams(workflowDescriptor: BackendWorkflowDescriptor, ioActor: ActorRef, calls: Set[TaskCallNode],
-                                              jobExecutionMap: JobExecutionMap, workflowOutputs: CallOutputs,
-                                              initializationDataOption: Option[BackendInitializationData]):
+                                               logPaths: Set[Path], workflowOutputs: CallOutputs,
+                                               initializationDataOption: Option[BackendInitializationData]):
   StandardFinalizationActorParams = {
     // The `JesInitializationActor` will only return a non-`Empty` `JesBackendInitializationData` from a successful `beforeAll`
     // invocation.  HOWEVER, the finalization actor is created regardless of whether workflow initialization was successful
     // or not.  So the finalization actor must be able to handle an empty `JesBackendInitializationData` option, and there is no
     // `.get` on the initialization data as there is with the execution or cache hit copying actor methods.
-    JesFinalizationActorParams(workflowDescriptor, ioActor, calls, jesConfiguration, jobExecutionMap, workflowOutputs,
+    JesFinalizationActorParams(workflowDescriptor, ioActor, calls, jesConfiguration, logPaths, workflowOutputs,
       initializationDataOption)
   }
 

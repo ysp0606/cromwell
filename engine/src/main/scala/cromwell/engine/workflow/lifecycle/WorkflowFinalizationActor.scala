@@ -6,6 +6,7 @@ import cromwell.backend.BackendWorkflowFinalizationActor.{FinalizationFailed, Fi
 import cromwell.backend._
 import cromwell.core.Dispatcher.EngineDispatcher
 import cromwell.core.WorkflowId
+import cromwell.core.path.Path
 import cromwell.engine.EngineWorkflowDescriptor
 import cromwell.engine.backend.CromwellBackends
 import cromwell.engine.workflow.lifecycle.WorkflowFinalizationActor._
@@ -40,16 +41,16 @@ object WorkflowFinalizationActor {
   case object WorkflowFinalizationSucceededResponse extends WorkflowLifecycleSuccessResponse
   final case class WorkflowFinalizationFailedResponse(reasons: Seq[Throwable]) extends WorkflowLifecycleFailureResponse
 
-  def props(workflowId: WorkflowId, workflowDescriptor: EngineWorkflowDescriptor, ioActor: ActorRef, jobExecutionMap: JobExecutionMap,
+  def props(workflowId: WorkflowId, workflowDescriptor: EngineWorkflowDescriptor, ioActor: ActorRef, logPaths: Map[BackendJobDescriptorKey, Set[Path]],
             workflowOutputs: CallOutputs, initializationData: AllBackendInitializationData, copyWorkflowOutputsActor: Option[Props]): Props = {
-    Props(new WorkflowFinalizationActor(workflowId, workflowDescriptor, ioActor, jobExecutionMap, workflowOutputs, initializationData, copyWorkflowOutputsActor)).withDispatcher(EngineDispatcher)
+    Props(new WorkflowFinalizationActor(workflowId, workflowDescriptor, ioActor, logPaths, workflowOutputs, initializationData, copyWorkflowOutputsActor)).withDispatcher(EngineDispatcher)
   }
 }
 
 case class WorkflowFinalizationActor(workflowIdForLogging: WorkflowId,
                                      workflowDescriptor: EngineWorkflowDescriptor,
                                      ioActor: ActorRef,
-                                     jobExecutionMap: JobExecutionMap,
+                                     logPaths: Map[BackendJobDescriptorKey, Set[Path]],
                                      workflowOutputs: CallOutputs,
                                      initializationData: AllBackendInitializationData,
                                      copyWorkflowOutputsActorProps: Option[Props])
@@ -79,7 +80,7 @@ case class WorkflowFinalizationActor(workflowIdForLogging: WorkflowId,
         for {
           (backend, calls) <- workflowDescriptor.backendAssignments.groupBy(_._2).mapValues(_.keySet)
           props <- CromwellBackends.backendLifecycleFactoryActorByName(backend).map(
-            _.workflowFinalizationActorProps(workflowDescriptor.backendDescriptor, ioActor, calls, filterJobExecutionsForBackend(calls), workflowOutputs, initializationData.get(backend))
+            _.workflowFinalizationActorProps(workflowDescriptor.backendDescriptor, ioActor, calls, logPathsForBackend(calls), workflowOutputs, initializationData.get(backend))
           ).get
           actor = context.actorOf(props, backend)
         } yield actor
@@ -109,12 +110,10 @@ case class WorkflowFinalizationActor(workflowIdForLogging: WorkflowId,
   }
   
   // Only send to each backend the jobs that it executed
-  private def filterJobExecutionsForBackend(calls: Set[TaskCallNode]): JobExecutionMap = {
-    jobExecutionMap map {
-      case (wd, executedKeys) => wd -> (executedKeys filter { jobKey => calls.contains(jobKey.call) })
-    } filter {
-      case (_, keys) => keys.nonEmpty
-    }
+  private def logPathsForBackend(calls: Set[TaskCallNode]): Set[Path] = {
+    (logPaths collect {
+      case (bjdk, logPathSet) if calls.contains(bjdk.call) => logPathSet
+    }).flatten.toSet
   }
 
   when(FinalizationInProgressState) {

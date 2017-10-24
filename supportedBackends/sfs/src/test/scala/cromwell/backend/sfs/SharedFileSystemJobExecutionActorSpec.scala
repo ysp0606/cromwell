@@ -126,7 +126,7 @@ class SharedFileSystemJobExecutionActorSpec extends TestKitSuite("SharedFileSyst
       val jobDescriptor: BackendJobDescriptor = jobDescriptorFromSingleCallWorkflow(workflowDescriptor, callInputs, WorkflowOptions.empty, runtimeAttributeDefinitions)
       val expectedResponse = JobSucceededResponse(jobDescriptor.key, Some(0), expectedOutputs, None, Seq.empty, None)
 
-      val jobPaths = JobPathsWithDocker(jobDescriptor.key, workflowDescriptor, conf.backendConfig)
+      val jobPaths = JobPathsWithDocker(jobDescriptor, conf.backendConfig)
 
       whenReady(backend.execute) { executionResponse =>
         assertResponse(executionResponse, expectedResponse)
@@ -174,7 +174,7 @@ class SharedFileSystemJobExecutionActorSpec extends TestKitSuite("SharedFileSyst
     val backendRef = createBackendRef(jobDescriptor, TestConfig.backendRuntimeConfigDescriptor)
     val backend = backendRef.underlyingActor
 
-    val jobPaths = JobPathsWithDocker(jobDescriptor.key, workflowDescriptor, ConfigFactory.empty)
+    val jobPaths = JobPathsWithDocker(jobDescriptor, ConfigFactory.empty)
     jobPaths.callExecutionRoot.createPermissionedDirectories()
     jobPaths.stdout.write("Hello stubby ! ")
     jobPaths.stderr.touch()
@@ -266,7 +266,7 @@ class SharedFileSystemJobExecutionActorSpec extends TestKitSuite("SharedFileSyst
     val workflowDescriptor = buildWdlWorkflowDescriptor(OutputProcess, inputs)
     val jobDescriptor: BackendJobDescriptor = jobDescriptorFromSingleCallWorkflow(workflowDescriptor, Map.empty, WorkflowOptions.empty, runtimeAttributeDefinitions)
     val backend = createBackend(jobDescriptor, TestConfig.backendRuntimeConfigDescriptor)
-    val jobPaths = JobPathsWithDocker(jobDescriptor.key, workflowDescriptor, TestConfig.backendRuntimeConfigDescriptor.backendConfig)
+    val jobPaths = JobPathsWithDocker(jobDescriptor, TestConfig.backendRuntimeConfigDescriptor.backendConfig)
     val expectedA = WomFile(jobPaths.callExecutionRoot.resolve("a").toAbsolutePath.pathAsString)
     val expectedB = WomFile(jobPaths.callExecutionRoot.resolve("dir").toAbsolutePath.resolve("b").pathAsString)
     val expectedOutputs = Map(

@@ -15,7 +15,7 @@ trait StandardFinalizationActorParams {
 
   def calls: Set[TaskCallNode]
 
-  def jobExecutionMap: JobExecutionMap
+  def logPaths: Set[Path]
 
   def workflowOutputs: CallOutputs
 
@@ -28,7 +28,7 @@ case class DefaultStandardFinalizationActorParams
 (
   workflowDescriptor: BackendWorkflowDescriptor,
   calls: Set[TaskCallNode],
-  jobExecutionMap: JobExecutionMap,
+  logPaths: Set[Path],
   workflowOutputs: CallOutputs,
   initializationDataOption: Option[BackendInitializationData],
   configurationDescriptor: BackendConfigurationDescriptor
@@ -47,7 +47,7 @@ class StandardFinalizationActor(val standardParams: StandardFinalizationActorPar
   override lazy val workflowDescriptor: BackendWorkflowDescriptor = standardParams.workflowDescriptor
   override lazy val calls: Set[TaskCallNode] = standardParams.calls
   lazy val initializationDataOption: Option[BackendInitializationData] = standardParams.initializationDataOption
-  lazy val jobExecutionMap: JobExecutionMap = standardParams.jobExecutionMap
+  lazy val logPaths: Set[Path] = standardParams.logPaths
   lazy val workflowOutputs: CallOutputs = standardParams.workflowOutputs
   override lazy val configurationDescriptor: BackendConfigurationDescriptor = standardParams.configurationDescriptor
 
@@ -58,16 +58,6 @@ class StandardFinalizationActor(val standardParams: StandardFinalizationActorPar
   protected val ioExecutionContext: MessageDispatcher = context.system.dispatchers.lookup(IoDispatcher)
 
   override def afterAll(): Future[Unit] = copyCallLogs()
-
-  lazy val logPaths: Seq[Path] = {
-    for {
-      actualWorkflowPath <- workflowPaths.toSeq
-      (backendWorkflowDescriptor, keys) <- jobExecutionMap.toSeq
-      key <- keys
-      jobPaths = actualWorkflowPath.toJobPaths(key, backendWorkflowDescriptor)
-      logPath <- jobPaths.logPaths.values
-    } yield logPath
-  }
 
   protected def copyCallLogs(): Future[Unit] = {
     /*
@@ -88,7 +78,7 @@ class StandardFinalizationActor(val standardParams: StandardFinalizationActorPar
     copyLogs(callLogsPath, logPaths)
   }
 
-  private def copyLogs(callLogsDirPath: Path, logPaths: Seq[Path]): Unit = {
+  private def copyLogs(callLogsDirPath: Path, logPaths: Set[Path]): Unit = {
     workflowPaths match {
       case Some(paths) => logPaths.foreach(PathCopier.copy(paths.executionRoot, _, callLogsDirPath))
       case None =>
