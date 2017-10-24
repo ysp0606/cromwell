@@ -6,4 +6,6 @@ object RuntimeAttributesKeys {
   val ContinueOnReturnCodeKey = "continueOnReturnCode"
   val CpuKey = "cpu"
   val MemoryKey = "memory"
+  val StdoutRedirect = "stdoutRedirect"
+  val StderrRedirect = "stderrRedirect"
 }

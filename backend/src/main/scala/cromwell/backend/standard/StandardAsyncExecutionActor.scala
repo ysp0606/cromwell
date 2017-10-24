@@ -258,6 +258,9 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
   lazy val continueOnReturnCode: ContinueOnReturnCode = RuntimeAttributesValidation.extract(
     ContinueOnReturnCodeValidation.instance, validatedRuntimeAttributes)
 
+  lazy val stdOutRedirect: String = RuntimeAttributesValidation.extract(StdoutRedirectValidation, validatedRuntimeAttributes)
+  lazy val stdErrRedirect: String = RuntimeAttributesValidation.extract(StderrRedirectValidation, validatedRuntimeAttributes)
+
   /**
     * Execute the job specified in the params. Should return a `StandardAsyncPendingExecutionHandle`, or a
     * `FailedExecutionHandle`.

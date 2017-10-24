@@ -3,6 +3,7 @@ class: Workflow
 id: three_step
 inputs:
 - id: pattern
+  default: "v"
   type: string
 outputs:
 - id: cgrep-count

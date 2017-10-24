@@ -41,6 +41,14 @@ object RuntimeAttributesValidation {
     validateWithValidation(cpu, CpuValidation.instance, onMissingKey)
   }
 
+  def validateStdoutRedirection(stdout: Option[WomValue]): ErrorOr[String] = {
+    validateWithValidation(stdout, StdoutRedirectValidation, "stdout".validNel)
+  }
+
+  def validateStderrRedirection(stderr: Option[WomValue]): ErrorOr[String] = {
+    validateWithValidation(stderr, StdoutRedirectValidation, "stderr".validNel)
+  }
+
   private def validateWithValidation[T](valueOption: Option[WomValue],
                                         validation: RuntimeAttributesValidation[T],
                                         onMissingValue: => ErrorOr[T]): ErrorOr[T] = {

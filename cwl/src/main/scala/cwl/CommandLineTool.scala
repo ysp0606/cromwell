@@ -60,7 +60,7 @@ case class CommandLineTool private(
 
       def makeExpressionPair(key: String, value: Option[StringOrExpression]) = value map { v => key -> stringOrExpressionToWomExpression(v) }
 
-      val runtimeAttributeMap = (List(makeExpressionPair("stdout", stdout), makeExpressionPair("stderr", stderr)) collect {
+      val runtimeAttributeMap = (List(makeExpressionPair("stdoutRedirect", stdout), makeExpressionPair("stderrRedirect", stderr)) collect {
         case Some(pair) => pair
       }).toMap
 

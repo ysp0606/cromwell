@@ -2,6 +2,7 @@ package cromwell.backend.standard
 
 import com.typesafe.config.Config
 import cromwell.backend.validation._
+import wom.values.WomString
 
 /**
   * Validates a collection of runtime attributes for a Standard Backend.
@@ -31,7 +32,11 @@ object StandardValidatedRuntimeAttributesBuilder {
     * Additional runtime attribute validations may be added by calling `withValidation` on the default.
     */
   def default(backendRuntimeConfig: Option[Config]): StandardValidatedRuntimeAttributesBuilder = {
-    val required = Seq(ContinueOnReturnCodeValidation.default(backendRuntimeConfig), FailOnStderrValidation.default(backendRuntimeConfig))
+    val required = Seq(
+      ContinueOnReturnCodeValidation.default(backendRuntimeConfig),
+      FailOnStderrValidation.default(backendRuntimeConfig),
+      StdoutRedirectValidation.withDefault(WomString("stdout")),
+      StderrRedirectValidation.withDefault(WomString("stderr")))
     val custom = Seq.empty
     StandardValidatedRuntimeAttributesBuilderImpl(custom, required)
   }
