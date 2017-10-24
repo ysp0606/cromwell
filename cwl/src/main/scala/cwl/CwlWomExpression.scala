@@ -10,13 +10,26 @@ import cats.syntax.validated._
 import cwl.WorkflowStepInput.InputSource
 
 sealed trait CwlWomExpression extends WomExpression {
-
   def cwlExpressionType: WomType
-
-  override def evaluateType(inputTypes: Map[String, WomType]): ErrorOr[WomType] = cwlExpressionType.validNel
+  override final def evaluateType(inputTypes: Map[String, WomType]): ErrorOr[WomType] = cwlExpressionType.validNel
 }
 
-case class CommandOutputExpression(outputBinding: CommandOutputBinding,
+final case class GeneralPurposeCwlExpression(expr: Expression,
+                                             override val cwlExpressionType: WomType,
+                                             override val inputs: Set[String]) extends CwlWomExpression {
+  override def sourceString: String = "GeneralPurposeCwlExpression"
+
+  override def evaluateFiles(inputTypes: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType): ErrorOr[Set[WomFile]] = Set.empty[WomFile].validNel
+
+  override def evaluateValue(inputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = {
+    val parameterContext = ParameterContext.Empty.withInputs(inputValues, ioFunctionSet)
+    val womValue = expr.fold(EvaluateExpression).apply(parameterContext)
+    cwlExpressionType.coerceRawValue(womValue).toErrorOr
+  }
+
+}
+
+final case class CommandOutputExpression(outputBinding: CommandOutputBinding,
                                    override val cwlExpressionType: WomType,
                                    override val inputs: Set[String]) extends CwlWomExpression {
 
@@ -25,9 +38,9 @@ case class CommandOutputExpression(outputBinding: CommandOutputBinding,
   override def evaluateValue(inputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = {
     val parameterContext = ParameterContext.Empty.withInputs(inputValues, ioFunctionSet)
 
-    val wdlValue: WomValue = outputBinding.commandOutputBindingToWdlValue(parameterContext, ioFunctionSet)
+    val womValue: WomValue = outputBinding.commandOutputBindingToWomValue(parameterContext, ioFunctionSet)
     val extractFile: WomValue =
-      wdlValue match {
+      womValue match {
         case WomArray(_, Seq(WomMap(WomMapType(WomStringType, WomStringType), map))) => map(WomString("location"))
         case other => other
       }
@@ -36,8 +49,8 @@ case class CommandOutputExpression(outputBinding: CommandOutputBinding,
 
   /*
   TODO:
-   DB: It doesn't make sense to me that this function returns type WdlFile but accepts a type to which it coerces.
-   Wouldn't coerceTo always == WdlFileType, and if not then what?
+   DB: It doesn't make sense to me that this function returns type WomFile but accepts a type to which it coerces.
+   Wouldn't coerceTo always == WomFileType, and if not then what?
    */
   override def evaluateFiles(inputs: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType): ErrorOr[Set[WomFile]] ={
 
@@ -66,7 +79,7 @@ final case class WorkflowStepInputExpression(input: WorkflowStepInput, override 
     }
   }
 
-  override def evaluateFiles(inputTypes: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType) = ???
+  override def evaluateFiles(inputTypes: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType): ErrorOr[Set[WomFile]] = Set.empty[WomFile].validNel
 
   override def inputs = graphInputs ++ input.source.toSet.flatMap{ inputSource: InputSource => inputSource match {
     case WorkflowStepInputSource.String(s) => Set(FullyQualifiedName(s).id)

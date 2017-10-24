@@ -11,8 +11,9 @@ import eu.timepit.refined.W
 import wom.callable.Callable.{OutputDefinition, RequiredInputDefinition}
 import wom.callable.{Callable, TaskDefinition}
 import wom.executable.Executable
-import wom.expression.WomExpression
-import wom.types.WomFileType
+import wom.expression.{ValueAsAnExpression, WomExpression}
+import wom.types.{WomFileType, WomStringType}
+import wom.values.WomString
 import wom.{CommandPart, RuntimeAttributes}
 
 /**
@@ -51,7 +52,20 @@ case class CommandLineTool private(
     val commandTemplate: Seq[CommandPart] = baseCommand.toSeq.flatMap(_.fold(BaseCommandToCommandParts)) ++
       arguments.toSeq.flatMap(_.map(_.fold(ArgumentToCommandPart)))
 
-    val runtimeAttributes: RuntimeAttributes = RuntimeAttributes(Map.empty[String, WomExpression])
+    val runtimeAttributes: RuntimeAttributes = {
+      def stringOrExpressionToWomExpression(soe: StringOrExpression): WomExpression = soe match {
+        case StringOrExpression.String(s) => ValueAsAnExpression(WomString(s))
+        case StringOrExpression.Expression(e) => GeneralPurposeCwlExpression(e, WomStringType, inputs.map(_.id).toSet)
+      }
+
+      def makeExpressionPair(key: String, value: Option[StringOrExpression]) = value map { v => key -> stringOrExpressionToWomExpression(v) }
+
+      val runtimeAttributeMap = (List(makeExpressionPair("stdout", stdout), makeExpressionPair("stderr", stderr)) collect {
+        case Some(pair) => pair
+      }).toMap
+
+      RuntimeAttributes(runtimeAttributeMap)
+    }
 
     val meta: Map[String, String] = Map.empty
     val parameterMeta: Map[String, String] = Map.empty
@@ -79,7 +93,7 @@ case class CommandLineTool private(
         OutputDefinition(FullyQualifiedName(cop_id).id, womType, CommandOutputExpression(outputBinding, womType, inputNames))
     }.toList
 
-    val inputs: List[_ <: Callable.InputDefinition] =
+    val taskDefinitionInputs: List[_ <: Callable.InputDefinition] =
       this.inputs.map { cip =>
         val tpe = cip.`type`.flatMap(_.select[CwlType]).map(cwlTypeToWdlType).get
 
@@ -93,7 +107,7 @@ case class CommandLineTool private(
       meta,
       parameterMeta,
       outputs,
-      inputs,
+      taskDefinitionInputs,
       // TODO: This doesn't work in all cases and it feels clunky anyway - find a way to sort that out
       prefixSeparator = "#",
       commandPartSeparator = " "
