@@ -104,7 +104,8 @@ cd "${RUN_DIR}"
 TEST_STATUS="failed"
 
 sbt centaur/it:compile
-CP=$(sbt "export centaur/it:dependencyClasspath" --error)
+# `sbt --error` isn't working currently in 1.x. See example [warning] output in https://github.com/sbt/sbt/issues/3693
+CP=$(sbt "export centaur/it:dependencyClasspath" --error | grep jar)
 
 if [ -n "${TEST_CASE_DIR}" ]; then
     RUN_SPECIFIED_TEST_DIR_CMD="-Dcentaur.standardTestCasePath=${TEST_CASE_DIR}"
