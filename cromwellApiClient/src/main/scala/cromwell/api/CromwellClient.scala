@@ -24,7 +24,7 @@ import scala.util.{Failure, Success, Try}
 class CromwellClient(val cromwellUrl: URL, val apiVersion: String, val credentials: Option[HttpCredentials]=None)(implicit actorSystem: ActorSystem, materializer: ActorMaterializer) {
 
   lazy val authHeader = credentials.map { Authorization(_) }
-  lazy val commonHeaders = authHeader.toList
+  lazy val commonHeaders: List[HttpHeader] = authHeader.toList
 
   lazy val engineEndpoint = s"$cromwellUrl/engine/$apiVersion"
   lazy val submitEndpoint = s"$cromwellUrl/api/workflows/$apiVersion"
@@ -50,15 +50,15 @@ class CromwellClient(val cromwellUrl: URL, val apiVersion: String, val credentia
   import model.CromwellVersionJsonSupport._
   import model.CallCacheDiffJsonSupport._
 
-  def submit(workflow: WorkflowSubmission)(implicit ec: ExecutionContext): Future[SubmittedWorkflow] = {
+  def submit(workflow: WorkflowSubmission, customHeaders: Option[List[HttpHeader]] = None)(implicit ec: ExecutionContext): Future[SubmittedWorkflow] = {
     val requestEntity = requestEntityForSubmit(workflow)
 
-    makeRequest[CromwellStatus](HttpRequest(HttpMethods.POST, submitEndpoint, List.empty[HttpHeader], requestEntity)) map { status =>
+    makeRequest[CromwellStatus](HttpRequest(HttpMethods.POST, submitEndpoint, List.empty[HttpHeader], requestEntity), customHeaders) map { status =>
       SubmittedWorkflow(WorkflowId.fromString(status.id), cromwellUrl, workflow)
     }
   }
 
-  def submitBatch(workflow: WorkflowBatchSubmission)(implicit ec: ExecutionContext): Future[List[SubmittedWorkflow]] = {
+  def submitBatch(workflow: WorkflowBatchSubmission, customHeaders: Option[List[HttpHeader]] = None)(implicit ec: ExecutionContext): Future[List[SubmittedWorkflow]] = {
     import DefaultJsonProtocol._
 
     val requestEntity = requestEntityForSubmit(workflow)
@@ -91,14 +91,18 @@ class CromwellClient(val cromwellUrl: URL, val apiVersion: String, val credentia
   def backends(implicit ec: ExecutionContext): Future[CromwellBackends] = simpleRequest[CromwellBackends](backendsEndpoint)
   def version(implicit ec: ExecutionContext): Future[CromwellVersion] = simpleRequest[CromwellVersion](versionEndpoint)
 
-  private [api] def executeRequest(request: HttpRequest) = Http().singleRequest(request.withHeaders(commonHeaders))
+  private [api] def executeRequest(request: HttpRequest, customHeaders: Option[List[HttpHeader]] = None): Future[HttpResponse] = {
+    val headers: List[HttpHeader] = customHeaders.getOrElse(commonHeaders)
+    Http().singleRequest(request.withHeaders(headers))
+  }
 
   /**
     *
     * @tparam A The type of response expected. Must be supported by an implicit unmarshaller from ResponseEntity.
     */
-  private def makeRequest[A](request: HttpRequest)(implicit um: Unmarshaller[ResponseEntity, A], ec: ExecutionContext): Future[A] = for {
-    response <- executeRequest(request)
+  private def makeRequest[A](request: HttpRequest, customHeaders: Option[List[HttpHeader]] = None)
+                            (implicit um: Unmarshaller[ResponseEntity, A], ec: ExecutionContext): Future[A] = for {
+    response <- executeRequest(request, customHeaders)
     decoded <- Future.fromTry(decodeResponse(response))
     entity <- Future.fromTry(decoded.toEntity)
     unmarshalled <- unmarshall(response, entity)(um, ec)
