@@ -85,7 +85,7 @@ object WdlCall {
      */
     def expressionNodeMappings: ErrorOr[Map[LocalName, AnonymousExpressionNode]] = {
       val precomputedOgins: Map[String, OutputPort] = outerLookup collect {
-        case (name, port) if !localLookup.contains(name) => name -> OuterGraphInputNode(WomIdentifier(name), port, preserveIndexForOuterLookups).singleOutputPort
+        case (name, port) if !localLookup.contains(name) => name -> OuterGraphInputNode(WomIdentifier(name), port, preserveIndexForOuterLookups, WdlIdentifierBuilder).singleOutputPort
       }
       val newLocalLookup = localLookup ++ precomputedOgins
       wdlCall.inputMappings traverse {
@@ -140,13 +140,13 @@ object WdlCall {
         // so that it can be satisfied via workflow inputs
         case required@RequiredInputDefinition(n, womType) =>
           val identifier = wdlCall.womIdentifier.combine(n)
-          withGraphInputNode(required, RequiredGraphInputNode(identifier, womType))
+          withGraphInputNode(required, RequiredGraphInputNode(identifier, womType, WdlIdentifierBuilder))
 
         // No input mapping, no default value but optional, create a OptionalGraphInputNode
         // so that it can be satisfied via workflow inputs
         case optional@OptionalInputDefinition(n, womType) =>
           val identifier = wdlCall.womIdentifier.combine(n)
-          withGraphInputNode(optional, OptionalGraphInputNode(identifier, womType))
+          withGraphInputNode(optional, OptionalGraphInputNode(identifier, womType, WdlIdentifierBuilder))
       }
     }
 
@@ -157,7 +157,7 @@ object WdlCall {
           ogin <- expressionNode.upstreamOuterGraphInputNodes
         } yield ogin
 
-        val callNodeAndNewNodes = callNodeBuilder.build(wdlCall.womIdentifier, callable, foldInputDefinitions(mappings, callable).copy(usedOuterGraphInputNodes = usedOgins))
+        val callNodeAndNewNodes = callNodeBuilder.build(wdlCall.womIdentifier, callable, foldInputDefinitions(mappings, callable).copy(usedOuterGraphInputNodes = usedOgins), WdlIdentifierBuilder)
 
         // If the created node is a `TaskCallNode` the created input expressions should be `TaskCallInputExpressionNode`s
         // and should be assigned a reference to the `TaskCallNode`. This is used in the `WorkflowExecutionActor` to
@@ -170,6 +170,15 @@ object WdlCall {
 
         callNodeAndNewNodes
       }
+      /*
+=======
+        val idf: InputDefinitionFold =
+          foldInputDefinitions(mappings, callable).copy(usedOuterGraphInputNodes = usedOgins)
+
+        callNodeBuilder.
+          build(wdlCall.womIdentifier, callable, idf, )
+>>>>>>> wip
+*/
     }
   }
 }

@@ -46,17 +46,8 @@ object GraphNodePort {
   /**
     * For any graph node that uses a declarations to produce outputs (e.g. call, declaration):
     */
-  object GraphNodeOutputPort {
-    def apply(name: String, womType: WomType, graphNode: GraphNode): GraphNodeOutputPort = {
-      GraphNodeOutputPort(WomIdentifier(LocalName(name), graphNode.identifier.fullyQualifiedName.combine(name)), womType, graphNode)
-    }
-  }
   case class GraphNodeOutputPort(override val identifier: WomIdentifier, womType: WomType, graphNode: GraphNode) extends OutputPort
-  object ExpressionBasedOutputPort {
-    def apply(localName: LocalName, womType: WomType, graphNode: GraphNode, expression: WomExpression): ExpressionBasedOutputPort = {
-      ExpressionBasedOutputPort(WomIdentifier(localName, graphNode.identifier.fullyQualifiedName.combine(localName.value)), womType, graphNode, expression)
-    }
-  }
+
   case class ExpressionBasedOutputPort(override val identifier: WomIdentifier, womType: WomType, graphNode: GraphNode, expression: WomExpression) extends OutputPort
 
   /**

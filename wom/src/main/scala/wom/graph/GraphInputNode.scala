@@ -1,15 +1,18 @@
 package wom.graph
 
 import wom.expression.WomExpression
+import wom.graph.CallNode.{WdlIdentifierBuilder, WomIdentifierBuilder}
 import wom.graph.GraphNodePort.GraphNodeOutputPort
 import wom.types.{WomOptionalType, WomType}
 
 sealed trait GraphInputNode extends GraphNode {
   def womType: WomType
-  lazy val singleOutputPort: GraphNodeOutputPort = GraphNodeOutputPort(localName, womType, this)
+  lazy val singleOutputPort: GraphNodeOutputPort = GraphNodeOutputPort(outputWomIdentifierBuilder(LocalName(localName), this) , womType, this)
 
   override val inputPorts: Set[GraphNodePort.InputPort] = Set.empty
   override val outputPorts: Set[GraphNodePort.OutputPort] = Set(singleOutputPort)
+
+  def outputWomIdentifierBuilder: WomIdentifierBuilder
 }
 
 sealed trait ExternalGraphInputNode extends GraphInputNode {
@@ -41,26 +44,29 @@ sealed trait ExternalGraphInputNode extends GraphInputNode {
 }
 
 final case class RequiredGraphInputNode(override val identifier: WomIdentifier,
-                                        womType: WomType) extends ExternalGraphInputNode
+                                        womType: WomType,
+                                        override val outputWomIdentifierBuilder: WomIdentifierBuilder = WdlIdentifierBuilder) extends ExternalGraphInputNode
 
 final case class OptionalGraphInputNode(override val identifier: WomIdentifier,
-                                        womType: WomOptionalType) extends ExternalGraphInputNode
+                                        womType: WomOptionalType,
+                                        override val outputWomIdentifierBuilder: WomIdentifierBuilder = WdlIdentifierBuilder) extends ExternalGraphInputNode
 
 // If we want to allow defaults to be "complex" expressions with dependencies we may need to make it an InstantiatedExpression here instead
 final case class OptionalGraphInputNodeWithDefault(override val identifier: WomIdentifier,
                                                    womType: WomType,
-                                                   default: WomExpression) extends ExternalGraphInputNode
+                                                   default: WomExpression,
+                                                   override val outputWomIdentifierBuilder: WomIdentifierBuilder = WdlIdentifierBuilder) extends ExternalGraphInputNode
 
 object OuterGraphInputNode {
-  def apply(forIdentifier: WomIdentifier, linkToOuterGraph: GraphNodePort.OutputPort, preserveScatterIndex: Boolean): OuterGraphInputNode = {
-    new OuterGraphInputNode(forIdentifier.copy(fullyQualifiedName = forIdentifier.fullyQualifiedName.prefixWith("^")), linkToOuterGraph, preserveScatterIndex)
+  def apply(forIdentifier: WomIdentifier, linkToOuterGraph: GraphNodePort.OutputPort, preserveScatterIndex: Boolean, outputWomIdentifierBuilder: WomIdentifierBuilder = WdlIdentifierBuilder): OuterGraphInputNode = {
+    new OuterGraphInputNode(forIdentifier.copy(fullyQualifiedName = forIdentifier.fullyQualifiedName.prefixWith("^")), linkToOuterGraph, preserveScatterIndex, outputWomIdentifierBuilder)
   }
 }
 
 /**
   * Used to represent an input to any GraphNode's inner graph which is a link to a value somewhere in the outer graph.
   */
-class OuterGraphInputNode protected(override val identifier: WomIdentifier, val linkToOuterGraph: GraphNodePort.OutputPort, val preserveScatterIndex: Boolean) extends GraphInputNode {
+class OuterGraphInputNode protected(override val identifier: WomIdentifier, val linkToOuterGraph: GraphNodePort.OutputPort, val preserveScatterIndex: Boolean, override val outputWomIdentifierBuilder: WomIdentifierBuilder = WdlIdentifierBuilder) extends GraphInputNode {
   override def womType: WomType = linkToOuterGraph.womType
   override lazy val singleOutputPort: GraphNodeOutputPort = GraphNodeOutputPort(identifier, womType, this)
   lazy val linkToOuterGraphNode = linkToOuterGraph.graphNode
@@ -70,4 +76,5 @@ class OuterGraphInputNode protected(override val identifier: WomIdentifier, val 
 
 final case class ScatterVariableNode(override val identifier: WomIdentifier,
                                      scatterExpressionOutputPort: GraphNodePort.OutputPort,
-                                     override val womType: WomType) extends OuterGraphInputNode(identifier, scatterExpressionOutputPort, preserveScatterIndex = true)
+                                     override val womType: WomType,
+                                     override val outputWomIdentifierBuilder: WomIdentifierBuilder = WdlIdentifierBuilder) extends OuterGraphInputNode(identifier, scatterExpressionOutputPort, preserveScatterIndex = true, outputWomIdentifierBuilder)

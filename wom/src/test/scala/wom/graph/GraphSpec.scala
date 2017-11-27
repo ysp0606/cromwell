@@ -6,7 +6,7 @@ import shapeless.Coproduct
 import wom.RuntimeAttributes
 import wom.callable.Callable.{OutputDefinition, RequiredInputDefinition}
 import wom.callable.{CallableTaskDefinition, WorkflowDefinition}
-import wom.graph.CallNode.{CallNodeAndNewNodes, CallNodeBuilder, InputDefinitionFold, InputDefinitionPointer}
+import wom.graph.CallNode.{CallNodeAndNewNodes, CallNodeBuilder, InputDefinitionFold, InputDefinitionPointer, WdlIdentifierBuilder}
 import wom.graph.GraphNodePort.OutputPort
 import wom.types.{WomFileType, WomIntegerType, WomStringType}
 
@@ -120,7 +120,7 @@ class GraphSpec extends FlatSpec with Matchers {
       Set.empty,
       Set(workflowInputNode)
     )
-    val CallNodeAndNewNodes(threeStepCall, threeStepInputs, _, _) = threeStepNodeBuilder.build(WomIdentifier("three_step"), threeStepWorkflow, inputDefinitionFold)
+    val CallNodeAndNewNodes(threeStepCall, threeStepInputs, _, _) = threeStepNodeBuilder.build(WomIdentifier("three_step"), threeStepWorkflow, inputDefinitionFold, WdlIdentifierBuilder)
 
     // This is painful manually, but it's not up to WOM to decide which subworkflow outputs are forwarded through:
     val psProcsOutputNode = PortBasedGraphOutputNode(WomIdentifier("three_step.ps.procs"), WomFileType, threeStepCall.outputByName("ps.procs").getOrElse(fail("Subworkflow didn't expose the ps.procs output")))
@@ -138,11 +138,11 @@ class GraphSpec extends FlatSpec with Matchers {
   }
   
   it should "fail to validate a Graph with duplicate identifiers" in {
-    val nodeA = RequiredGraphInputNode(WomIdentifier("bar", "foo.bar"), WomStringType)
-    val nodeB = RequiredGraphInputNode(WomIdentifier("bar", "foo.bar"), WomIntegerType)
-    val nodeC = RequiredGraphInputNode(WomIdentifier("baz", "foo.baz"), WomStringType)
-    val nodeD = RequiredGraphInputNode(WomIdentifier("baz", "foo.baz"), WomIntegerType)
-    
+    val nodeA = RequiredGraphInputNode(WomIdentifier("bar", "foo.bar"), WomStringType, WdlIdentifierBuilder)
+    val nodeB = RequiredGraphInputNode(WomIdentifier("bar", "foo.bar"), WomIntegerType, WdlIdentifierBuilder)
+    val nodeC = RequiredGraphInputNode(WomIdentifier("baz", "foo.baz"), WomStringType, WdlIdentifierBuilder)
+    val nodeD = RequiredGraphInputNode(WomIdentifier("baz", "foo.baz"), WomIntegerType, WdlIdentifierBuilder)
+
     Graph.validateAndConstruct(Set(nodeA, nodeB, nodeC, nodeD)) match {
       case Valid(_) => fail("Graph should not validate")
       case Invalid(errors) => errors.toList.toSet shouldBe Set(

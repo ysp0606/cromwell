@@ -13,6 +13,7 @@ import wom.callable.Callable.{InputDefinitionWithDefault, OutputDefinition, Requ
 import wom.callable.{Callable, CallableTaskDefinition, ExecutableTaskDefinition}
 import wom.executable.Executable
 import wom.expression.{ValueAsAnExpression, WomExpression}
+import wom.graph.CallNode.WdlIdentifierBuilder
 import wom.types.WomFileType
 import wom.{CommandPart, RuntimeAttributes}
 
@@ -45,7 +46,8 @@ case class CommandLineTool private(
                                    permanentFailCodes: Option[Array[Int]]) {
 
   def womExecutable(inputFile: Option[String] = None): Checked[Executable] =
-    CwlExecutableValidation.buildWomExecutable(ExecutableTaskDefinition.tryApply(taskDefinition).toEither, inputFile)
+    CwlExecutableValidation.buildWomExecutable(
+      ExecutableTaskDefinition.tryApply(taskDefinition, WdlIdentifierBuilder).toEither, inputFile)
 
   def taskDefinition: CallableTaskDefinition = {
 
@@ -100,7 +102,9 @@ case class CommandLineTool private(
 
     // The try will succeed if this is a task within a step. If it's a standalone file, the ID will be the file,
     // so the filename is the fallback.
-    def taskName = Try(FullyQualifiedName(id).id).getOrElse(Paths.get(id).getFileName.toString)
+    def taskName =
+      Try(FullyQualifiedName(id).id).
+        getOrElse(Paths.get(id).getFileName.toString)
 
     CallableTaskDefinition(
       taskName,

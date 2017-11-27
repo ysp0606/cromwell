@@ -46,7 +46,8 @@ object Executable {
     }
 
     def fallBack(gin: ExternalGraphInputNode): ErrorOr[ResolvedExecutableInput] = gin match {
-      case required: RequiredGraphInputNode => s"Required workflow input '${required.identifier.fullyQualifiedName.value}' not specified".invalidNel
+      case required: RequiredGraphInputNode =>
+        s"Required workflow input '${required.identifier.fullyQualifiedName.value}' not specified in keyset: ${inputCoercionMap.keys.mkString(", ")}".invalidNel
       case optionalWithDefault: OptionalGraphInputNodeWithDefault => Coproduct[ResolvedExecutableInput](optionalWithDefault.default).validNel
       case optional: OptionalGraphInputNode => Coproduct[ResolvedExecutableInput](optional.womType.none: WomValue).validNel
     }
@@ -54,7 +55,9 @@ object Executable {
     graph.inputNodes.collect({
       case gin: ExternalGraphInputNode =>
         // The compiler needs the type ascription for some reason
-        (gin.singleOutputPort: OutputPort) -> fromInputMapping(gin).getOrElse(fallBack(gin))
+        val result = fromInputMapping(gin).getOrElse(fallBack(gin))
+
+        (gin.singleOutputPort: OutputPort) -> result
     }).toMap.sequence
   }
 }

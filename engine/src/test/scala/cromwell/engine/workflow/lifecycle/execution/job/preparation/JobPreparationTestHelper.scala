@@ -11,6 +11,7 @@ import cromwell.engine.workflow.lifecycle.execution.stores.ValueStore
 import cromwell.services.keyvalue.KeyValueServiceActor.{KvJobKey, ScopedKey}
 import common.validation.ErrorOr.ErrorOr
 import org.specs2.mock.Mockito
+import wom.graph.CallNode.WdlIdentifierBuilder
 import wom.graph.{TaskCallNode, WomIdentifier}
 import wom.values.{WomEvaluatedCallInputs, WomValue}
 
@@ -24,7 +25,7 @@ class JobPreparationTestHelper(implicit val system: ActorSystem) extends Mockito
   workflowDescriptor.id returns WorkflowId.randomId()
   executionData.workflowDescriptor returns workflowDescriptor
   val jobKey = mock[BackendJobDescriptorKey]
-  val call = TaskCallNode(WomIdentifier("JobPreparationSpec_call"), null, null, null)
+  val call = TaskCallNode(WomIdentifier("JobPreparationSpec_call"), null, null, null, WdlIdentifierBuilder)
   jobKey.call returns call
   val serviceRegistryProbe = TestProbe()
   val ioActor = TestProbe()

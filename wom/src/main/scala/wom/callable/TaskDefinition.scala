@@ -5,9 +5,10 @@ import common.validation.ErrorOr.ErrorOr
 import wdl.util.StringUtil
 import wom.core._
 import wom.expression.IoFunctionSet
+import wom.graph.CallNode.{WdlIdentifierBuilder, WomIdentifierBuilder}
 import wom.graph.{Graph, TaskCall}
 import wom.values.{WomEvaluatedCallInputs, WomValue}
-import wom.{InstantiatedCommand, CommandPart, RuntimeAttributes}
+import wom.{CommandPart, InstantiatedCommand, RuntimeAttributes}
 
 object TaskDefinition {
   private implicit val instantiatedCommandMonoid = cats.derive.monoid[InstantiatedCommand]
@@ -90,6 +91,6 @@ final case class ExecutableTaskDefinition private (callableTaskDefinition: Calla
 }
 
 object ExecutableTaskDefinition {
-  def tryApply(callableTaskDefinition: CallableTaskDefinition): ErrorOr[ExecutableTaskDefinition] =
-    TaskCall.graphFromDefinition(callableTaskDefinition) map { ExecutableTaskDefinition(callableTaskDefinition, _) }
+  def tryApply(callableTaskDefinition: CallableTaskDefinition, outputWomIdentifierBuilder: WomIdentifierBuilder = WdlIdentifierBuilder): ErrorOr[ExecutableTaskDefinition] =
+    TaskCall.graphFromDefinition(callableTaskDefinition, outputWomIdentifierBuilder) map { ExecutableTaskDefinition(callableTaskDefinition, _) }
 }

@@ -4,6 +4,7 @@ import cromwell.core.CallOutputs
 import wom.RuntimeAttributes
 import wom.callable.Callable.OutputDefinition
 import wom.callable.{CallableTaskDefinition, TaskDefinition, WorkflowDefinition}
+import wom.graph.CallNode.WdlIdentifierBuilder
 import wom.graph.GraphNodePort.{GraphNodeOutputPort, OutputPort}
 import wom.graph.{Graph, TaskCallNode, WomIdentifier, WorkflowCallNode}
 import wom.types.{WomStringType, WomType}
@@ -16,7 +17,7 @@ object WomMocks {
   val EmptyWorkflowDefinition = mockWorkflowDefinition("emptyWorkflow")
 
   def mockTaskCall(identifier: WomIdentifier, definition: TaskDefinition = EmptyTaskDefinition) = {
-    TaskCallNode(identifier, definition, Set.empty, List.empty)
+    TaskCallNode(identifier, definition, Set.empty, List.empty, WdlIdentifierBuilder)
   }
   
   def mockWorkflowCall(identifier: WomIdentifier, definition: WorkflowDefinition = EmptyWorkflowDefinition) = {

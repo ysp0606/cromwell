@@ -15,6 +15,7 @@ import CwlVersion._
 import wom.callable.WorkflowDefinition
 import wom.executable.Executable
 import wom.expression.{ValueAsAnExpression, WomExpression}
+import wom.graph.CallNode.CwlIdentifierBuilder
 import wom.graph.GraphNodePort.{GraphNodeOutputPort, OutputPort}
 import wom.graph._
 import wom.types.WomType
@@ -65,11 +66,11 @@ case class Workflow private(
 
         // TODO: Eurgh! But until we have something better ...
         val womValue = womType.coerceRawValue(inputParameter.default.get).get
-        OptionalGraphInputNodeWithDefault(WomIdentifier(parsedInputId), womType, ValueAsAnExpression(womValue))
+        OptionalGraphInputNodeWithDefault(WomIdentifier(parsedInputId), womType, ValueAsAnExpression(womValue), CwlIdentifierBuilder)
       case input =>
         val parsedInputId = FileAndId(input.id).id
 
-        RequiredGraphInputNode(WomIdentifier(parsedInputId), wdlTypeForInputParameter(input).get)
+        RequiredGraphInputNode(WomIdentifier(parsedInputId), wdlTypeForInputParameter(input).get, CwlIdentifierBuilder)
     }.toSet
 
     val workflowInputs: Map[String, GraphNodeOutputPort] =

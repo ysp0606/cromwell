@@ -25,7 +25,10 @@ case class FullyQualifiedName(value: String) {
 
 object WomIdentifier {
   def apply(localName: String): WomIdentifier = WomIdentifier(LocalName(localName), FullyQualifiedName(localName))
+  def apply(localName: LocalName): WomIdentifier = WomIdentifier(localName, FullyQualifiedName(localName.value))
   def apply(localName: String, fullyQualifiedName: String): WomIdentifier = WomIdentifier(LocalName(localName), FullyQualifiedName(fullyQualifiedName))
+  def apply(localName: LocalName, graphNode: GraphNode): WomIdentifier =
+    WomIdentifier(localName, graphNode.identifier.fullyQualifiedName.combine(localName.value))
 }
 
 case class WomIdentifier(localName: LocalName, fullyQualifiedName: FullyQualifiedName) {
