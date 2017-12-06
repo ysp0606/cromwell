@@ -1,0 +1,21 @@
+name: count-lines-8-wf
+testFormat: workflowsuccess
+workflowType: CWL
+workflowTypeVersion: v1.0
+backends: [Local]
+tags: [localdockertest]
+ignore: true # Depends on 2991
+
+files {
+  wdl: cwls/count-lines8-wf.cwl
+  imports: [
+    cwls/count-lines1-wf.cwl,
+    cwls/wc-tool.cwl,
+    cwls/parseInt-tool.cwl
+  ]
+}
+
+metadata {
+  "submittedFiles.workflowType": CWL
+  "submittedFiles.workflowTypeVersion": v1.0
+}
