@@ -1,7 +1,7 @@
 package wom.types
 
 import spray.json.JsString
-import wom.values.{WomFile, WomString}
+import wom.values.{WomFile, WomSingleFile, WomString}
 
 import scala.util.{Success, Try}
 
@@ -9,9 +9,9 @@ case object WomFileType extends WomPrimitiveType {
   val toDisplayString: String = "File"
 
   override protected def coercion = {
-    case s: String => WomFile(s)
-    case s: JsString => WomFile(s.value)
-    case s: WomString => WomFile(s.valueString)
+    case s: String => WomSingleFile(s)
+    case s: JsString => WomSingleFile(s.value)
+    case s: WomString => WomSingleFile(s.valueString)
     case f: WomFile => f
   }
 

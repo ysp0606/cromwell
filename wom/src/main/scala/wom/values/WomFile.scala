@@ -4,45 +4,53 @@ import wom.types.{WomFileType, WomType}
 
 import scala.util.{Success, Try}
 
-object WomFile {
-  def appendPathsWithSlashSeparators(path1: String, path2: String) = {
-    if (path1.endsWith("/") || path2.startsWith("/")) path1 + path2
-    else path1 + "/" + path2
-  }
-
-  def apply(value: String, isGlob: Boolean = false): WomFile = if (isGlob) WomGlobFile(value) else WomSingleFile(value)
-}
-
 sealed trait WomFile extends WomPrimitive {
   val value: String
-  val womType: WomType = WomFileType
-
-  def isGlob: Boolean = this match {
-    case _: WomGlobFile => true
-    case _ => false
-  }
-
-  override def add(rhs: WomValue): Try[WomValue] = rhs match {
-    case r: WomString => Success(WomFile(value + r.value))
-    case r: WomOptionalValue => evaluateIfDefined("+", r, add)
-    case _ => invalid(s"$value + $rhs")
-  }
-
-  override def equals(rhs: WomValue): Try[WomBoolean] = rhs match {
-    case r: WomFile => Success(WomBoolean(value.equals(r.value) && isGlob.equals(r.isGlob)))
-    case r: WomString => Success(WomBoolean(value.toString.equals(r.value.toString) && !isGlob))
-    case r: WomOptionalValue => evaluateIfDefined("==", r, equals)
-    case _ => invalid(s"$value == $rhs")
-  }
+  override val womType: WomType = WomFileType
 
   override def valueString = value.toString
 }
 
-case class WomSingleFile(value: String) extends WomFile {
+sealed trait WomSingleDirectoryOrFile extends WomFile {
   override def toWomString = "\"" + value.toString + "\""
+
+  def basenameOption: Option[String] = Some("TODO") //pathOption.map(path => path.substring(path.lastIndexOf("/") + 1))
+
+  override def add(rhs: WomValue): Try[WomValue] = rhs match {
+    case r: WomString => Success(WomSingleDirectory(value + r.value))
+    case r: WomOptionalValue => evaluateIfDefined("+", r, add)
+    case _ => invalid(s"$value + $rhs")
+  }
+}
+
+case class WomSingleDirectory(value: String,
+                              pathOption: Option[String] = None,
+                              listing: Seq[WomSingleDirectoryOrFile] = Vector.empty
+                             ) extends WomSingleDirectoryOrFile
+
+case class WomSingleFile(value: String,
+                         pathOption: Option[String] = None,
+                         checksumOption: Option[String] = None,
+                         sizeOption: Option[Long] = None,
+                         secondaryFiles: Seq[WomSingleDirectoryOrFile] = Vector.empty,
+                         format: Option[String] = None,
+                         contents: Option[String] = None
+                        ) extends WomSingleDirectoryOrFile {
+  override def toWomString = "\"" + value.toString + "\""
+
+  def dirnameOption: Option[String] = Some("TODO") //pathOption.map(path => path.substring(0, path.lastIndexOf("/")))
+
+  def namerootOption: Option[String] = Some("TODO") //pathOption.map(path => path.substring(0, path.lastIndexOf("/")))
+
+  def nameextOption: Option[String] = Some("TODO") //pathOption.map(path => path.substring(0, path.lastIndexOf("/")))
+
+  override def add(rhs: WomValue): Try[WomValue] = rhs match {
+    case r: WomString => Success(WomSingleFile(value + r.value))
+    case r: WomOptionalValue => evaluateIfDefined("+", r, add)
+    case _ => invalid(s"$value + $rhs")
+  }
 }
 
 case class WomGlobFile(value: String) extends WomFile {
   override def toWomString = "glob(\"" + value.toString + "\")"
 }
-

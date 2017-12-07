@@ -40,7 +40,7 @@ case class CommandLineBindingCommandPart(argument: CommandLineBinding) extends C
                            runtimeEnvironment: RuntimeEnvironment): ErrorOr[InstantiatedCommand] =
     Try {
       val pc = ParameterContext(runtime = runtimeEnvironment.cwlMap).withInputs(inputsMap.map({
-        case (LocalName(localName), WomSingleFile(path)) => localName -> WomString(path)
+        case (LocalName(localName), WomSingleFile(path, _, _, _, _, _, _)) => localName -> WomString(path)
         case (LocalName(localName), value) => localName -> value
       }), functions)
 

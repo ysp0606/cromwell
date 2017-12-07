@@ -71,7 +71,7 @@ class PureStandardLibraryFunctionsSpec extends FlatSpec with Matchers {
   it should "return errors for arguments which are not arrays" in {
     val nonArrays: List[WomValue] = List(WomInteger(17),
                                          WomString("banana"),
-                                         WomFile("/tmp/bubbles"))
+                                         WomSingleFile("/tmp/bubbles"))
     nonArrays.foreach{ elem =>
       PureStandardLibraryFunctions.flatten(Seq(Success(elem))) should be(a[Failure[_]])
     }

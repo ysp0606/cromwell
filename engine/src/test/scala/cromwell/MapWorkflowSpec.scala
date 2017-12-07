@@ -15,9 +15,9 @@ class MapWorkflowSpec extends CromwellTestKitWordSpec {
   private val sampleWdl = SampleWdl.MapLiteral(pwd)
   val ns = WdlNamespaceWithWorkflow.load(sampleWdl.workflowSource(), Seq.empty[ImportResolver]).get
   val expectedMap = WomMap(WomMapType(WomFileType, WomStringType), Map(
-    WomFile("f1") -> WomString("alice"),
-    WomFile("f2") -> WomString("bob"),
-    WomFile("f3") -> WomString("chuck")
+    WomSingleFile("f1") -> WomString("alice"),
+    WomSingleFile("f2") -> WomString("bob"),
+    WomSingleFile("f3") -> WomString("chuck")
   ))
   sampleWdl.cleanup()
 
@@ -60,7 +60,7 @@ class MapWorkflowSpec extends CromwellTestKitWordSpec {
         fail("Expected to find task 'write_map'")
       }
       class CannedFunctions extends WdlFunctions[WomValue] {
-        def write_map(params: Seq[Try[WomValue]]): Try[WomFile] = Success(WomFile("/test/map/path"))
+        def write_map(params: Seq[Try[WomValue]]): Try[WomFile] = Success(WomSingleFile("/test/map/path"))
         override def getFunction(name: String): WdlFunction = name match {
           case "write_map" => write_map
           case _ => throw new UnsupportedOperationException("Only write_map should be called")

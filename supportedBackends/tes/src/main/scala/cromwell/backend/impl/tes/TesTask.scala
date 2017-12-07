@@ -129,6 +129,7 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
             `type` = Option("FILE")
           )
         )
+      case (_: WomSingleDirectory, _) => throw new NotImplementedError("TODO WOM: Need to handle directories")
       case (g: WomGlobFile, index) =>
         val globName = GlobFunctions.globName(g.value)
         val globDirName = "globDir." + index

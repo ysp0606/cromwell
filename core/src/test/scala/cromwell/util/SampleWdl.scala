@@ -1055,7 +1055,7 @@ object SampleWdl {
       "w.t.a" -> WomInteger(1),
       "w.t.b" -> WomFloat(1.1),
       "w.t.c" -> WomString("foobar"),
-      "w.t.d" -> WomFile(cannedFile.pathAsString)
+      "w.t.d" -> WomSingleFile(cannedFile.pathAsString)
     )
   }
 

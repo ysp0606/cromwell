@@ -28,10 +28,10 @@ class ValueEvaluatorSpec extends FlatSpec with Matchers {
     ))
     case "o" => WomObject(Map("key1" -> WomString("value1"), "key2" -> WomInteger(9)))
     case "myPair" => WomPair(WomInteger(3), WomString("hello"))
-    case "etc_f" => WomFile("/etc")
-    case "etc2_f" => WomFile("/etc2")
+    case "etc_f" => WomSingleFile("/etc")
+    case "etc2_f" => WomSingleFile("/etc2")
     case "etc_s" => WomString("/etc")
-    case "sudoers_f" => WomFile("/sudoers")
+    case "sudoers_f" => WomSingleFile("/sudoers")
     case "sudoers_s" => WomString("/sudoers")
     case "f" => WomFloat(0.5F)
     case "t" => WomBoolean(true)
@@ -41,7 +41,7 @@ class ValueEvaluatorSpec extends FlatSpec with Matchers {
     case "someInt" => WomOptionalValue(WomInteger(1))
     case "someBoolean" => WomOptionalValue(WomBoolean(false))
     case "someFloat" => WomOptionalValue(WomFloat(0.5F))
-    case "someFile" => WomOptionalValue(WomFile("file"))
+    case "someFile" => WomOptionalValue(WomSingleFile("file"))
     case "noneStr" => WomOptionalValue.none(WomStringType)
     case "noneInt" => WomOptionalValue.none(WomIntegerType)
     case "noneBool" => WomOptionalValue.none(WomBooleanType)
@@ -380,7 +380,7 @@ class ValueEvaluatorSpec extends FlatSpec with Matchers {
     ("""map_str_int["c"]""", WomInteger(2)),
 
     // Files -- 'etc_f', 'etc2_f', and 'sudoers_f' are all variables that resolve to WdlFile
-    ("etc_f + sudoers_s", WomFile("/etc/sudoers")),
+    ("etc_f + sudoers_s", WomSingleFile("/etc/sudoers")),
     (""" "/foo" + etc_f """, WomString("/foo/etc")),
     ("etc_f == etc_f", WomBoolean.True),
     ("etc_f == etc2_f", WomBoolean.False),
@@ -407,7 +407,7 @@ class ValueEvaluatorSpec extends FlatSpec with Matchers {
     ("someStr + s", WomString("someStrs")),
     ("someInt + s", WomString("1s")),
     ("someFloat + s", WomString("0.5s")),
-    ("someFile + s", WomFile("files")),
+    ("someFile + s", WomSingleFile("files")),
     ("someStr == s", WomBoolean(false)),
     ("someStr < s", WomBoolean(false)),
     ("someStr > s", WomBoolean(true)),
@@ -468,7 +468,7 @@ class ValueEvaluatorSpec extends FlatSpec with Matchers {
     ("!someBoolean", WomBoolean(true)),
 
     // File
-    ("etc_f + someStr", WomFile("/etcsomeStr")),
+    ("etc_f + someStr", WomSingleFile("/etcsomeStr")),
     ("etc_f == someStr", WomBoolean(false)),
     ("etc_f == someFile", WomBoolean(false)),
 

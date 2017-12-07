@@ -19,7 +19,7 @@ import cromwell.core.io._
 import cromwell.core.logging.JobLogging
 import cromwell.core.path.{Path, PathCopier}
 import cromwell.core.simpleton.{WomValueBuilder, WomValueSimpleton}
-import wom.values.WomFile
+import wom.values.{WomFile, WomSingleFile}
 
 import scala.util.{Failure, Success, Try}
 
@@ -256,7 +256,7 @@ abstract class StandardCacheHitCopyingActor(val standardParams: StandardCacheHit
         val sourcePath = getPath(wdlFile.value).get
         val destinationPath = PathCopier.getDestinationFilePath(sourceCallRootPath, sourcePath, destinationCallRootPath)
 
-        val destinationSimpleton = WomValueSimpleton(key, WomFile(destinationPath.pathAsString))
+        val destinationSimpleton = WomValueSimpleton(key, WomSingleFile(destinationPath.pathAsString))
 
         List(destinationSimpleton) -> Set(copyCommand(sourcePath, destinationPath, overwrite = true))
       case nonFileSimpleton => (List(nonFileSimpleton), Set.empty[IoCommand[_]])

@@ -134,7 +134,7 @@ class WomTypeSpec extends FlatSpec with Matchers {
   }
 
   "WomFile" should "support expected coercions" in {
-    WomFileType.coerceRawValue("/etc/passwd").get shouldEqual WomFile("/etc/passwd")
+    WomFileType.coerceRawValue("/etc/passwd").get shouldEqual WomSingleFile("/etc/passwd")
     WomFileType.coerceRawValue(-1).isFailure shouldBe true
   }
 

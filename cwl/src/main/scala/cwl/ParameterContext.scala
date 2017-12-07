@@ -18,7 +18,7 @@ case class ParameterContext(inputs: WomValue = WomOptionalValue(WomNothingType, 
         WomMapType(WomStringType, wdlValueType),
         // TODO: WOM: convert inputValues (including WdlFile?) to inputs using the ioFunctionSet
         inputValues map {
-          case (name, WomSingleFile(path)) => WomString(name) -> WomString(path)
+          case (name, WomSingleFile(path, _, _, _, _, _, _)) => WomString(name) -> WomString(path)
           case (name, womValue) => WomString(name) -> womValue
         }
       )

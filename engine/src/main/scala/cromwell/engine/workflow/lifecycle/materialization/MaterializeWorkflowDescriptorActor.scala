@@ -542,9 +542,9 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
     def prefix(port: OutputPort) = s"Invalid value for File input '${port.fullyQualifiedName}':"
     
     val failedFiles = workflowInputs collect {
-      case (port , WomSingleFile(value)) if value.startsWith("\"gs://") =>
+      case (port , WomSingleFile(value, _, _, _, _, _, _)) if value.startsWith("\"gs://") =>
         s"""${prefix(port)} $value starts with a '"'"""
-      case (port , WomSingleFile(value)) if value.isEmpty =>
+      case (port , WomSingleFile(value, _, _, _, _, _, _)) if value.isEmpty =>
         s"${prefix(port)} empty value"
     }
 

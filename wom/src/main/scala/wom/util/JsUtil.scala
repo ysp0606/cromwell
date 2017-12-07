@@ -80,7 +80,7 @@ object JsUtil {
       case WomFloat(double) => double.asInstanceOf[java.lang.Double]
       case WomBoolean(boolean) => boolean.asInstanceOf[java.lang.Boolean]
       case WomArray(_, array) => array.map(toJavascript).toArray
-      case WomSingleFile(path) => path
+      case WomSingleFile(path, _, _, _, _, _, _) => path
       case WomMap(_, map) =>
         map.map({
           case (mapKey, mapValue) => toJavascript(mapKey) -> toJavascript(mapValue)

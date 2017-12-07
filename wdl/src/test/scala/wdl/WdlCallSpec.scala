@@ -44,8 +44,8 @@ class WdlCallSpec extends WordSpec with Matchers {
     declarations.find(_._1.unqualifiedName == "g").get._2 shouldBe WomOptionalValue(WomString("g"))
     declarations.find(_._1.unqualifiedName == "h").get._2 shouldBe WomOptionalValue(WomStringType, None)
     declarations.find(_._1.unqualifiedName == "i").get._2 shouldBe WomString("b")
-    declarations.find(_._1.unqualifiedName == "j").get._2 shouldBe WomFile("j")
-    declarations.find(_._1.unqualifiedName == "k").get._2 shouldBe WomArray(WomArrayType(WomFileType), Seq(WomFile("a"), WomFile("b"), WomFile("c")))
+    declarations.find(_._1.unqualifiedName == "j").get._2 shouldBe WomSingleFile("j")
+    declarations.find(_._1.unqualifiedName == "k").get._2 shouldBe WomArray(WomArrayType(WomFileType), Seq(WomSingleFile("a"), WomSingleFile("b"), WomSingleFile("c")))
     declarations.find(_._1.unqualifiedName == "l").get._2 shouldBe WomOptionalValue(WomString("c 2"))
   }
   
@@ -158,13 +158,13 @@ class WdlCallSpec extends WordSpec with Matchers {
 
     val ns = WdlNamespaceWithWorkflow.load(wdl, Seq.empty).get
     val exception = intercept[ValidationException] {
-        ns.workflow.findCallByName("hello2").get.evaluateTaskInputs(Map("wf_hello.wf_hello_input" -> WomFile("/do/not/exist")), functionsWithRead).get
+        ns.workflow.findCallByName("hello2").get.evaluateTaskInputs(Map("wf_hello.wf_hello_input" -> WomSingleFile("/do/not/exist")), functionsWithRead).get
     }
     exception.getMessage shouldBe "Input evaluation for Call wf_hello.hello2 failed.:\naddressee:\n\tFile not found /do/not/exist"
 
     val staticEvaluation = ns.staticDeclarationsRecursive(Map(
-      "wf_hello.wf_hello_input" -> WomFile("/do/not/exist"),
-      "wf_hello.wf_hello_input2" -> WomFile("/do/not/exist2")
+      "wf_hello.wf_hello_input" -> WomSingleFile("/do/not/exist"),
+      "wf_hello.wf_hello_input2" -> WomSingleFile("/do/not/exist2")
     ), functionsWithRead)
     
     staticEvaluation.isFailure shouldBe true

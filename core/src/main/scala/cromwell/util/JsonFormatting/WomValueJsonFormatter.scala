@@ -46,7 +46,7 @@ object WomFileJsonFormatter extends DefaultJsonProtocol {
   implicit object WomFileJsonFormat extends RootJsonFormat[WomFile] {
     def write(value: WomFile) = JsString(value.value)
     def read(value: JsValue): WomFile = value match {
-      case JsString(path) => WomFile(path)
+      case JsString(path) => WomSingleFile(path)
       case unsupported => throw new UnsupportedOperationException(s"Cannot deserialize $unsupported to a WdlFile")
     }
   }

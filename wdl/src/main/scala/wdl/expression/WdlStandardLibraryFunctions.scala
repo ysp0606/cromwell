@@ -98,7 +98,7 @@ trait WdlStandardLibraryFunctions extends WdlFunctions[WomValue] {
       womString <- WomStringType.coerceRawValue(pattern)
       patternString = womString.valueString
       filePaths <- Try(globHelper(patternString))
-    } yield WomArray(WomArrayType(WomFileType), filePaths.map(WomSingleFile))
+    } yield WomArray(WomArrayType(WomFileType), filePaths.map(WomSingleFile(_)))
   }
 
   def basename(params: Seq[Try[WomValue]]): Try[WomString] = {

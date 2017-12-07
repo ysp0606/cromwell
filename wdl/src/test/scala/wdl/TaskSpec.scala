@@ -20,7 +20,7 @@ class TaskSpec extends WdlTest {
     s"have a task with name 'wc'" in {
       wcTask.name shouldEqual "wc"
       wcTask.declarations.map(_.toWdlString) shouldEqual Vector("File in_file")
-      wcTask.instantiateCommand(wcTask.inputsFromMap(Map("wc.in_file" -> WomFile("/path/to/file"))), NoFunctions).toTry.get.commandString shouldEqual "cat /path/to/file | wc -l"
+      wcTask.instantiateCommand(wcTask.inputsFromMap(Map("wc.in_file" -> WomSingleFile("/path/to/file"))), NoFunctions).toTry.get.commandString shouldEqual "cat /path/to/file | wc -l"
       wcTask.outputs.size shouldEqual 1
       wcTask.outputs.head.unqualifiedName shouldEqual "count"
       wcTask.outputs.head.womType shouldEqual WomIntegerType
@@ -32,7 +32,7 @@ class TaskSpec extends WdlTest {
         "String pattern",
         "File in_file"
       )
-      cgrepTask.instantiateCommand(cgrepTask.inputsFromMap(Map("cgrep.pattern" -> WomString("^...$"), "cgrep.in_file" -> WomFile("/path/to/file"))), NoFunctions).toTry.get.commandString shouldEqual "grep '^...$' /path/to/file | wc -l"
+      cgrepTask.instantiateCommand(cgrepTask.inputsFromMap(Map("cgrep.pattern" -> WomString("^...$"), "cgrep.in_file" -> WomSingleFile("/path/to/file"))), NoFunctions).toTry.get.commandString shouldEqual "grep '^...$' /path/to/file | wc -l"
       cgrepTask.outputs.size shouldEqual 1
       cgrepTask.outputs.head.unqualifiedName shouldEqual "count"
       cgrepTask.outputs.head.womType shouldEqual WomIntegerType
