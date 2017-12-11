@@ -77,17 +77,6 @@ object CentaurCwlRunner extends StrictLogging {
 
   private def runCentaur(args: CommandLineArguments): ExitCode.Value = {
 
-    def zipSiblings(file: File): File = {
-      val zipFile = File.newTemporaryFile("cwl_imports.", ".zip")
-      val dir = file.parent
-      if (!args.quiet) {
-        logger.info(s"Zipping $dir to $zipFile")
-      }
-      val files = dir.children
-      Cmds.zip(files.toSeq: _*)(zipFile)
-      zipFile
-    }
-
     val workflowPath = args.workflowSource.get
     val outdirOption = args.outdir.map(_.pathAsString)
     val testName = workflowPath.name
@@ -99,7 +88,7 @@ object CentaurCwlRunner extends StrictLogging {
       JsObject("cwl_outdir" -> JsString(outdir)).compactPrint
     }
     val labels = List.empty
-    val zippedImports = Option(zipSiblings(workflowPath)) // TODO: Zipping all the things! Be more selective.
+    val zippedImports = None
     val backends = AllBackendsRequired(List.empty)
     val workflowMetadata = None
     val notInMetadata = List.empty
@@ -147,12 +136,6 @@ object CentaurCwlRunner extends StrictLogging {
           }
       }
     } finally {
-      zippedImports map { zipFile =>
-        if (!args.quiet) {
-          logger.info(s"Deleting $zipFile")
-        }
-        zipFile.delete(swallowIOExceptions = true)
-      }
       Await.result(CentaurCromwellClient.system.terminate(), Duration.Inf)
       ()
     }
