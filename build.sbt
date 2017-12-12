@@ -154,3 +154,13 @@ lazy val root = (project in file("."))
   .aggregate(womtool)
   // TODO: See comment in plugins.sbt regarding SBT 1.x
   .enablePlugins(CrossPerProjectPlugin)
+
+  inThisBuild(Seq(
+  scalaOrganization := "org.typelevel",
+  scalaVersion := "2.12.4-bin-typelevel-4"
+))
+
+libraryDependencies in ThisBuild ++=Seq(
+  scalaOrganization.value % "scala-reflect" % scalaVersion.value % "provided",
+  scalaOrganization.value % "scala-compiler" % scalaVersion.value % "provided"
+)
