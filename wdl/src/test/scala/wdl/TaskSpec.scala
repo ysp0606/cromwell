@@ -44,7 +44,7 @@ class TaskSpec extends WdlTest {
       psTask.instantiateCommand(Map(), NoFunctions).toTry.get.commandString shouldEqual "ps"
       psTask.outputs.size shouldEqual 1
       psTask.outputs.head.unqualifiedName shouldEqual "procs"
-      psTask.outputs.head.womType shouldEqual WomFileType
+      psTask.outputs.head.womType shouldEqual WomSingleFileType
     }
   }
 

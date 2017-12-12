@@ -43,8 +43,8 @@ package object cwl extends TypeAliases {
     case Float => WomFloatType
     case Double => WomFloatType
     case String => WomStringType
-    case CwlType.File => WomFileType
-    case CwlType.Directory => ???
+    case CwlType.File => WomSingleFileType
+    case CwlType.Directory => WomSingleDirectoryType
   }
 
   /**

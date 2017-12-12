@@ -156,6 +156,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     */
   private def relativeLocalizationPath(file: WomFile): WomFile = {
     getPath(file.value) match {
+        // TODO: WOM: WOMFILE: Relativize recursively
       case Success(path: WomSingleFile) => WomSingleFile(path.pathWithoutScheme)
       case Success(path: WomGlobFile) => WomGlobFile(path.pathWithoutScheme)
       case _ => file
@@ -220,8 +221,8 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
 
     val outputs = womFileOutputs.distinct flatMap { womFile =>
       womFile match {
+        case _: WomSingleDirectory => throw new NotImplementedError("TODO WOM: WOMFILE: Need to handle directories")
         case singleFile: WomSingleFile => List(generateJesSingleFileOutputs(singleFile))
-        case _: WomSingleDirectory => throw new NotImplementedError("TODO WOM: Need to handle directories")
         case globFile: WomGlobFile => generateJesGlobFileOutputs(globFile)
       }
     }

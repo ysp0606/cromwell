@@ -272,7 +272,7 @@ class SharedFileSystemJobExecutionActorSpec extends TestKitSuite("SharedFileSyst
     val expectedB = WomSingleFile(jobPaths.callExecutionRoot.resolve("dir").toAbsolutePath.resolve("b").pathAsString)
     val expectedOutputs = WomMocks.mockOutputExpectations(Map(
       "o1" -> expectedA,
-      "o2" -> WomArray(WomArrayType(WomFileType), Seq(expectedA, expectedB)),
+      "o2" -> WomArray(WomArrayType(WomSingleFileType), Seq(expectedA, expectedB)),
       "o3" -> WomSingleFile(inputFile)
     ))
     val expectedResponse = JobSucceededResponse(jobDescriptor.key, Some(0), expectedOutputs, None, Seq.empty, None)

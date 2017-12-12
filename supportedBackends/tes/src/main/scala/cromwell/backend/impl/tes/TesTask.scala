@@ -118,6 +118,7 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
   private val womOutputs = outputWomFiles
     .zipWithIndex
     .flatMap {
+      case (_: WomSingleDirectory, _) => throw new NotImplementedError("TODO WOM: WOMFILE: Need to handle directories")
       case (f: WomSingleFile, index) =>
         val outputFile = f.value
         Seq(
@@ -129,7 +130,6 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
             `type` = Option("FILE")
           )
         )
-      case (_: WomSingleDirectory, _) => throw new NotImplementedError("TODO WOM: Need to handle directories")
       case (g: WomGlobFile, index) =>
         val globName = GlobFunctions.globName(g.value)
         val globDirName = "globDir." + index

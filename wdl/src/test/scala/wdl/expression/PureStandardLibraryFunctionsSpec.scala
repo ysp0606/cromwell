@@ -61,7 +61,7 @@ class PureStandardLibraryFunctionsSpec extends FlatSpec with Matchers {
   }
 
   it should "return errors for arguments which are arrays with fewer than two dimensions" in {
-    val err1 = WomArray(WomArrayType(WomFileType), List.empty)
+    val err1 = WomArray(WomArrayType(WomSingleFileType), List.empty)
     PureStandardLibraryFunctions.flatten(Seq(Success(err1))) should be(a[Failure[_]])
 
     val err2 = WomArray(WomArrayType(WomFloatType), List(WomFloat(1.0), WomFloat(3.2)))

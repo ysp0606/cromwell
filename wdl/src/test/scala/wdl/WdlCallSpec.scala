@@ -4,7 +4,7 @@ import org.scalatest.{Matchers, WordSpec}
 import wdl.exception.ValidationException
 import wdl.expression.{NoFunctions, PureStandardLibraryFunctionsLike}
 import wdl.values.WdlCallOutputsObject
-import wom.types.{WomArrayType, WomFileType, WomIntegerType, WomStringType}
+import wom.types.{WomArrayType, WomSingleFileType, WomIntegerType, WomStringType}
 import wom.values._
 
 import scala.util.{Failure, Success, Try}
@@ -45,7 +45,7 @@ class WdlCallSpec extends WordSpec with Matchers {
     declarations.find(_._1.unqualifiedName == "h").get._2 shouldBe WomOptionalValue(WomStringType, None)
     declarations.find(_._1.unqualifiedName == "i").get._2 shouldBe WomString("b")
     declarations.find(_._1.unqualifiedName == "j").get._2 shouldBe WomSingleFile("j")
-    declarations.find(_._1.unqualifiedName == "k").get._2 shouldBe WomArray(WomArrayType(WomFileType), Seq(WomSingleFile("a"), WomSingleFile("b"), WomSingleFile("c")))
+    declarations.find(_._1.unqualifiedName == "k").get._2 shouldBe WomArray(WomArrayType(WomSingleFileType), Seq(WomSingleFile("a"), WomSingleFile("b"), WomSingleFile("c")))
     declarations.find(_._1.unqualifiedName == "l").get._2 shouldBe WomOptionalValue(WomString("c 2"))
   }
   

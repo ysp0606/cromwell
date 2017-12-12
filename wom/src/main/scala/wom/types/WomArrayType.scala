@@ -26,7 +26,7 @@ sealed trait WomArrayType extends WomType {
     case js: JsArray if allowEmpty || js.elements.nonEmpty => coerceIterable(js.elements)
     case javaList: java.util.List[_] if allowEmpty || !javaList.isEmpty => coerceIterable(javaList.asScala)
     case WomArray(WomMaybeEmptyArrayType.EmptyArrayType, _) => WomArray(this, Seq.empty)
-    case womArray: WomArray if (allowEmpty || womArray.nonEmpty) && womArray.womType.memberType == WomStringType && memberType == WomFileType =>
+    case womArray: WomArray if (allowEmpty || womArray.nonEmpty) && womArray.womType.memberType == WomStringType && memberType == WomSingleFileType =>
       WomArray(this, womArray.value.map(str => WomSingleFile(str.asInstanceOf[WomString].value)).toList)
     case womArray: WomArray if (allowEmpty || womArray.nonEmpty) && womArray.womType.memberType == memberType => WomArray(this, womArray.value)
     case womArray: WomArray if (allowEmpty || womArray.nonEmpty) && womArray.womType.memberType == WomAnyType => coerceIterable(womArray.value)

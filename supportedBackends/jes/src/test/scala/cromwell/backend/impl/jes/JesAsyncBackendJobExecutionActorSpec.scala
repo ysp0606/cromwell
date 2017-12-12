@@ -414,15 +414,15 @@ class JesAsyncBackendJobExecutionActorSpec extends TestKitSuite("JesAsyncBackend
   
   it should "generate correct JesFileInputs from a WdlMap" taggedAs PostWomTest ignore {
     val inputs: Map[String, WomValue] = Map(
-      "stringToFileMap" -> WomMap(WomMapType(WomStringType, WomFileType), Map(
+      "stringToFileMap" -> WomMap(WomMapType(WomStringType, WomSingleFileType), Map(
         WomString("stringTofile1") -> WomSingleFile("gs://path/to/stringTofile1"),
         WomString("stringTofile2") -> WomSingleFile("gs://path/to/stringTofile2")
       )),
-      "fileToStringMap" -> WomMap(WomMapType(WomFileType, WomStringType), Map(
+      "fileToStringMap" -> WomMap(WomMapType(WomSingleFileType, WomStringType), Map(
         WomSingleFile("gs://path/to/fileToString1") -> WomString("fileToString1"),
         WomSingleFile("gs://path/to/fileToString2") -> WomString("fileToString2")
       )),
-      "fileToFileMap" -> WomMap(WomMapType(WomFileType, WomFileType), Map(
+      "fileToFileMap" -> WomMap(WomMapType(WomSingleFileType, WomSingleFileType), Map(
         WomSingleFile("gs://path/to/fileToFile1Key") -> WomSingleFile("gs://path/to/fileToFile1Value"),
         WomSingleFile("gs://path/to/fileToFile2Key") -> WomSingleFile("gs://path/to/fileToFile2Value")
       )),
@@ -548,7 +548,7 @@ class JesAsyncBackendJobExecutionActorSpec extends TestKitSuite("JesAsyncBackend
   it should "generate correct JesFileInputs from a WdlArray" taggedAs PostWomTest ignore {
     val inputs: Map[String, WomValue] = Map(
       "fileArray" ->
-        WomArray(WomArrayType(WomFileType), Seq(WomSingleFile("gs://path/to/file1"), WomSingleFile("gs://path/to/file2")))
+        WomArray(WomArrayType(WomSingleFileType), Seq(WomSingleFile("gs://path/to/file1"), WomSingleFile("gs://path/to/file2")))
     )
 
     val womWorkflow = dockerAndDiskWdlNamespace.workflow.womDefinition.getOrElse(fail("failed to get WomDefinition from WdlWorkflow"))
@@ -631,9 +631,9 @@ class JesAsyncBackendJobExecutionActorSpec extends TestKitSuite("JesAsyncBackend
     )
     val outputValues = Seq(
       WomSingleFile("/cromwell_root/path/to/file1"),
-      WomArray(WomArrayType(WomFileType), Seq(
+      WomArray(WomArrayType(WomSingleFileType), Seq(
         WomSingleFile("/cromwell_root/path/to/file2"), WomSingleFile("/cromwell_root/path/to/file3"))),
-      WomMap(WomMapType(WomFileType, WomFileType), Map(
+      WomMap(WomMapType(WomSingleFileType, WomSingleFileType), Map(
         WomSingleFile("/cromwell_root/path/to/file4") -> WomSingleFile("/cromwell_root/path/to/file5")
       ))
     )
@@ -663,10 +663,10 @@ class JesAsyncBackendJobExecutionActorSpec extends TestKitSuite("JesAsyncBackend
     val result = outputValues map wdlValueToGcsPath(jesOutputs)
     result should have size 3
     result should contain(WomSingleFile("gs://path/to/file1"))
-    result should contain(WomArray(WomArrayType(WomFileType),
+    result should contain(WomArray(WomArrayType(WomSingleFileType),
       Seq(WomSingleFile("gs://path/to/file2"), WomSingleFile("gs://path/to/file3")))
     )
-    result should contain(WomMap(WomMapType(WomFileType, WomFileType),
+    result should contain(WomMap(WomMapType(WomSingleFileType, WomSingleFileType),
       Map(WomSingleFile("gs://path/to/file4") -> WomSingleFile("gs://path/to/file5")))
     )
   }

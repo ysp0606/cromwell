@@ -58,8 +58,8 @@ class ScatterWorkflowSpec extends CromwellTestKitWordSpec {
         eventFilter = EventFilter.info(pattern = "Workflow complete", occurrences = 1),
         expectedOutputs = Map(
           "sc_test.do_gather.sum" -> WomInteger(11),
-          "sc_test.do_prepare.split_files" -> WomArray(WomArrayType(WomFileType), Seq("temp_aa", "temp_ab", "temp_ac", "temp_ad").map(WomSingleFile(_))),
-          "sc_test.do_scatter.count_file" -> WomArray(WomArrayType(WomFileType), (1 to 4).map(_ => WomSingleFile("output.txt")))
+          "sc_test.do_prepare.split_files" -> WomArray(WomArrayType(WomSingleFileType), Seq("temp_aa", "temp_ab", "temp_ac", "temp_ad").map(WomSingleFile(_))),
+          "sc_test.do_scatter.count_file" -> WomArray(WomArrayType(WomSingleFileType), (1 to 4).map(_ => WomSingleFile("output.txt")))
         )
       )
     }
@@ -75,8 +75,8 @@ class ScatterWorkflowSpec extends CromwellTestKitWordSpec {
                   """.stripMargin,
         expectedOutputs = Map(
           "sc_test.do_gather.sum" -> WomInteger(11),
-          "sc_test.do_prepare.split_files" -> WomArray(WomArrayType(WomFileType), Seq("temp_aa", "temp_ab", "temp_ac", "temp_ad").map(WomSingleFile(_))),
-          "sc_test.do_scatter.count_file" -> WomArray(WomArrayType(WomFileType), (1 to 4).map(_ => WomSingleFile("output.txt")))
+          "sc_test.do_prepare.split_files" -> WomArray(WomArrayType(WomSingleFileType), Seq("temp_aa", "temp_ab", "temp_ac", "temp_ad").map(WomSingleFile(_))),
+          "sc_test.do_scatter.count_file" -> WomArray(WomArrayType(WomSingleFileType), (1 to 4).map(_ => WomSingleFile("output.txt")))
         )
       )
     }

@@ -46,7 +46,7 @@ class ValueEvaluatorSpec extends FlatSpec with Matchers {
     case "noneInt" => WomOptionalValue.none(WomIntegerType)
     case "noneBool" => WomOptionalValue.none(WomBooleanType)
     case "noneFloat" => WomOptionalValue.none(WomFloatType)
-    case "noneFile" => WomOptionalValue.none(WomFileType)
+    case "noneFile" => WomOptionalValue.none(WomSingleFileType)
   }
 
 

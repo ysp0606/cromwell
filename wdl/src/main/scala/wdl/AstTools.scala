@@ -111,7 +111,8 @@ object AstTools {
       astNode match {
         case t: Terminal =>
           t.getSourceString match {
-            case WomFileType.`toDisplayString` => WomFileType
+            case WomSingleFileType.`toDisplayString` => WomSingleFileType
+            case WomSingleDirectoryType.`toDisplayString` => WomSingleDirectoryType
             case WomStringType.`toDisplayString` => WomStringType
             case WomIntegerType.`toDisplayString` => WomIntegerType
             case WomFloatType.`toDisplayString` => WomFloatType
@@ -194,7 +195,12 @@ object AstTools {
 
       astNode match {
         case t: Terminal if t.getTerminalStr == "string" && womType == WomStringType => WomString(t.getSourceString)
-        case t: Terminal if t.getTerminalStr == "string" && womType == WomFileType => WomSingleFile(t.getSourceString)
+        case t: Terminal if t.getTerminalStr == "string" && womType == WomSingleDirectoryType =>
+          WomSingleDirectory(t.getSourceString)
+        case t: Terminal if t.getTerminalStr == "string" && womType == WomSingleFileType =>
+          WomSingleFile(t.getSourceString)
+        case t: Terminal if t.getTerminalStr == "string" && womType == WomGlobFileType =>
+          WomGlobFile(t.getSourceString)
         case t: Terminal if t.getTerminalStr == "integer" && womType == WomIntegerType => WomInteger(t.getSourceString.toInt)
         case t: Terminal if t.getTerminalStr == "float" && womType == WomFloatType => WomFloat(t.getSourceString.toDouble)
         case t: Terminal if t.getTerminalStr == "boolean" && womType == WomBooleanType => t.getSourceString.toLowerCase match {

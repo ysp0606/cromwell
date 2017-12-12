@@ -5,7 +5,7 @@ import cromwell.core.path.DefaultPathBuilder
 import cromwell.util.SampleWdl
 import wdl.expression.{NoFunctions, WdlFunctions}
 import wdl.{ImportResolver, WdlNamespaceWithWorkflow}
-import wom.types.{WomFileType, WomIntegerType, WomMapType, WomStringType}
+import wom.types.{WomSingleFileType, WomIntegerType, WomMapType, WomStringType}
 import wom.values._
 
 import scala.util.{Success, Try}
@@ -14,7 +14,7 @@ class MapWorkflowSpec extends CromwellTestKitWordSpec {
   private val pwd = DefaultPathBuilder.get(".")
   private val sampleWdl = SampleWdl.MapLiteral(pwd)
   val ns = WdlNamespaceWithWorkflow.load(sampleWdl.workflowSource(), Seq.empty[ImportResolver]).get
-  val expectedMap = WomMap(WomMapType(WomFileType, WomStringType), Map(
+  val expectedMap = WomMap(WomMapType(WomSingleFileType, WomStringType), Map(
     WomSingleFile("f1") -> WomString("alice"),
     WomSingleFile("f2") -> WomString("bob"),
     WomSingleFile("f3") -> WomString("chuck")
