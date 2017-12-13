@@ -26,6 +26,67 @@ object WomFile {
       case WomGlobFileType => WomGlobFile(value)
     }
   }
+
+  // TODO: WOM: WOMFILE: Should only map the path _or_ location? Come up with / Look up documented definitions of what the difference between path and location are stick to them.
+
+  // TODO: WOM: WOMFILE: A typeclass would make these less redundant. Can WOM use typeclasses? (even if WDL perhaps cannot?)
+
+  def mapFile(womFile: WomFile)(f: String => String): WomFile = {
+    womFile match {
+      case womSingleDirectory: WomSingleDirectory => mapSingleDirectory(womSingleDirectory)(f)
+      case womSingleFile: WomSingleFile => mapSingleFile(womSingleFile)(f)
+      case womGlobFile: WomGlobFile => mapGlobFile(womGlobFile)(f)
+    }
+  }
+
+  def mapSingleDirectoryOrFile(womFile: WomSingleDirectoryOrFile)(f: String => String): WomSingleDirectoryOrFile = {
+    womFile match {
+      case womSingleDirectory: WomSingleDirectory => mapSingleDirectory(womSingleDirectory)(f)
+      case womSingleFile: WomSingleFile => mapSingleFile(womSingleFile)(f)
+    }
+  }
+
+  def mapSingleFile(womFile: WomSingleFile)(f: String => String): WomSingleFile = {
+    WomSingleFile(
+      f(womFile.value),
+      womFile.pathOption.map(f),
+      womFile.checksumOption,
+      womFile.sizeOption,
+      womFile.secondaryFiles.map(mapSingleDirectoryOrFile(_)(f)),
+      womFile.formatOption,
+      womFile.contentsOption
+    )
+  }
+
+  def mapSingleDirectory(womFile: WomSingleDirectory)(f: String => String): WomSingleDirectory = {
+    WomSingleDirectory(
+      f(womFile.value),
+      womFile.pathOption.map(f),
+      womFile.listing.map(mapSingleDirectoryOrFile(_)(f))
+    )
+  }
+
+  def mapGlobFile(womFile: WomGlobFile)(f: String => String): WomGlobFile = {
+    womFile match {
+      case WomGlobFile(value) => WomGlobFile(f(value))
+    }
+  }
+
+  def flattenFile(womFile: WomFile): Seq[WomFile] = {
+    womFile match {
+      case womSingleDirectory: WomSingleDirectory =>
+        womSingleDirectory.listing.toList match {
+          case Nil => List(womFile)
+          case list => list flatMap flattenFile
+        }
+      case womSingleFile: WomSingleFile =>
+        womSingleFile.secondaryFiles.foldLeft(List(womFile)) {
+          (womFiles, womSingleDirectoryOrFile) =>
+            womFiles ++ flattenFile(womSingleDirectoryOrFile)
+        }
+      case womGlobFile: WomGlobFile => List(womGlobFile)
+    }
+  }
 }
 
 sealed trait WomSingleDirectoryOrFile extends WomFile {
@@ -55,8 +116,8 @@ case class WomSingleFile(value: String,
                          checksumOption: Option[String] = None,
                          sizeOption: Option[Long] = None,
                          secondaryFiles: Seq[WomSingleDirectoryOrFile] = Vector.empty,
-                         format: Option[String] = None,
-                         contents: Option[String] = None
+                         formatOption: Option[String] = None,
+                         contentsOption: Option[String] = None
                         ) extends WomSingleDirectoryOrFile {
 
   override val womType: WomType = WomSingleFileType

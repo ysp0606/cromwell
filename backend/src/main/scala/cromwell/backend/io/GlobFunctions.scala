@@ -2,10 +2,9 @@ package cromwell.backend.io
 
 import cats.instances.list._
 import cats.syntax.traverse._
+import common.validation.ErrorOr.ErrorOr
 import cromwell.backend.BackendJobDescriptor
 import cromwell.core.CallContext
-import common.validation.ErrorOr.ErrorOr
-import wom.values._
 import wom.expression.IoFunctionSet
 import wom.graph.TaskCallNode
 import wom.values.WomGlobFile
@@ -52,5 +51,5 @@ trait GlobFunctions extends IoFunctionSet {
 }
 
 object GlobFunctions {
-  def globName(glob: String) = s"glob-${glob.md5Sum}"
+  def globName(glob: String) = FileFunctions.collectionName(glob, "glob")
 }

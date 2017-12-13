@@ -25,7 +25,7 @@ import cromwell.filesystems.gcs.batch.GcsBatchCommandBuilder
 import cromwell.services.keyvalue.KeyValueServiceActor._
 import cromwell.services.keyvalue.KvClient
 import common.validation.ErrorOr.ErrorOr
-import cromwell.backend.io.GlobFunctions
+import cromwell.backend.io.{DirectoryFunctions, GlobFunctions}
 import org.slf4j.LoggerFactory
 import wom.callable.Callable.OutputDefinition
 import wom.core.FullyQualifiedName
@@ -155,11 +155,11 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     * relativeLocalizationPath("gs://some/bucket/foo.txt") -> "some/bucket/foo.txt"
     */
   private def relativeLocalizationPath(file: WomFile): WomFile = {
-    getPath(file.value) match {
-        // TODO: WOM: WOMFILE: Relativize recursively
-      case Success(path: WomSingleFile) => WomSingleFile(path.pathWithoutScheme)
-      case Success(path: WomGlobFile) => WomGlobFile(path.pathWithoutScheme)
-      case _ => file
+    WomFile.mapFile(file) { value =>
+      getPath(value) match {
+        case Success(path) => path.pathWithoutScheme
+        case _ => value
+      }
     }
   }
 
@@ -219,21 +219,51 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
 
     val womFileOutputs = jobDescriptor.taskCall.callable.outputs.flatMap(evaluateFiles) map relativeLocalizationPath
 
-    val outputs = womFileOutputs.distinct flatMap { womFile =>
-      womFile match {
-        case _: WomSingleDirectory => throw new NotImplementedError("TODO WOM: WOMFILE: Need to handle directories")
-        case singleFile: WomSingleFile => List(generateJesSingleFileOutputs(singleFile))
-        case globFile: WomGlobFile => generateJesGlobFileOutputs(globFile)
-      }
-    }
-
+    val outputs = womFileOutputs.distinct flatMap generateJesFileOutputs
     outputs.toSet
   }
 
-  private def generateJesSingleFileOutputs(womFile: WomSingleFile): JesFileOutput = {
+  private def generateJesFileOutputs(womFile: WomFile): List[JesFileOutput] = {
+    WomFile.flattenFile(womFile).toList flatMap {
+      case womSingleDirectory: WomSingleDirectory => generateSingleDirectoryOutputs(womSingleDirectory)
+      case womSingleFile: WomSingleFile => generateJesSingleFileOutputs(womSingleFile)
+      case womGlobFile: WomGlobFile => generateJesGlobFileOutputs(womGlobFile)
+    }
+  }
+
+  private def generateJesSingleFileOutputs(womFile: WomSingleFile): List[JesFileOutput] = {
     val destination = callRootPath.resolve(womFile.value.stripPrefix("/")).pathAsString
     val (relpath, disk) = relativePathAndAttachedDisk(womFile.value, runtimeAttributes.disks)
-    JesFileOutput(makeSafeJesReferenceName(womFile.value), destination, relpath, disk)
+    val jesFileOutput = JesFileOutput(makeSafeJesReferenceName(womFile.value), destination, relpath, disk)
+    List(jesFileOutput)
+  }
+
+  private def generateSingleDirectoryOutputs(womFile: WomSingleDirectory): List[JesFileOutput] = {
+    val directoryName = DirectoryFunctions.directoryName(womFile.value)
+    val directoryListFile = directoryName + ".list"
+    val directoryTarFile = directoryName + ".tgz"
+    val gcsDirDestinationPath = callRootPath.resolve(directoryListFile).pathAsString
+    val gcsTarDestinationPath = callRootPath.resolve(directoryTarFile).pathAsString
+
+    val (_, directoryDisk) = relativePathAndAttachedDisk(womFile.value, runtimeAttributes.disks)
+
+    // We need both the collection directory and the collection list:
+    List(
+      // The collection directory:
+      JesFileOutput(
+        makeSafeJesReferenceName(directoryListFile),
+        gcsDirDestinationPath,
+        DefaultPathBuilder.get(directoryListFile),
+        directoryDisk
+      ),
+      // The collection list file:
+      JesFileOutput(
+        makeSafeJesReferenceName(directoryTarFile),
+        gcsTarDestinationPath,
+        DefaultPathBuilder.get(directoryTarFile),
+        directoryDisk
+      )
+    )
   }
 
   private def generateJesGlobFileOutputs(womFile: WomGlobFile): List[JesFileOutput] = {
@@ -281,8 +311,8 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     } else ""
   }
 
-  override def globParentDirectory(womGlobFile: WomGlobFile): Path = {
-    val (_, disk) = relativePathAndAttachedDisk(womGlobFile.value, runtimeAttributes.disks)
+  override def womFileParentDirectory(womFile: WomFile): Path = {
+    val (_, disk) = relativePathAndAttachedDisk(womFile.value, runtimeAttributes.disks)
     disk.mountPoint
   }
 

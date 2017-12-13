@@ -4,6 +4,8 @@ import java.io.IOException
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.event.LoggingReceive
+import cats.data.Validated._
+import cats.syntax.apply._
 import common.exception.MessageAggregation
 import common.util.TryUtil
 import common.validation.ErrorOr.ErrorOr
@@ -13,7 +15,7 @@ import cromwell.backend.BackendLifecycleActor.AbortJobCommand
 import cromwell.backend._
 import cromwell.backend.async.AsyncBackendJobExecutionActor._
 import cromwell.backend.async.{AbortedExecutionHandle, AsyncBackendJobExecutionActor, ExecutionHandle, FailedNonRetryableExecutionHandle, FailedRetryableExecutionHandle, PendingExecutionHandle, ReturnCodeIsNotAnInt, StderrNonEmpty, SuccessfulExecutionHandle, WrongReturnCode}
-import cromwell.backend.io.GlobFunctions
+import cromwell.backend.io.{DirectoryFunctions, GlobFunctions}
 import cromwell.backend.validation._
 import cromwell.backend.wdl.OutputEvaluator._
 import cromwell.backend.wdl.{Command, OutputEvaluator}
@@ -142,14 +144,14 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
   lazy val commandDirectory: Path = jobPaths.callExecutionRoot
 
   /**
-    * The local parent directory of the glob file. By default this is the same as the commandDirectory.
+    * The local parent directory of the file. By default this is the same as the commandDirectory.
     *
     * In some cases, to allow the hard linking by ln to operate, a different mount point must be returned.
     *
-    * @param wdlGlobFile The glob.
-    * @return The parent directory for writing the wdl glob.
+    * @param womFile The wom file.
+    * @return The parent directory for writing the glob.
     */
-  def globParentDirectory(wdlGlobFile: WomGlobFile): Path = commandDirectory
+  def womFileParentDirectory(womFile: WomFile): Path = commandDirectory
 
   /**
     * Returns the shell scripting for hard linking the glob results using ln.
@@ -167,7 +169,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @return The shell scripting.
     */
   def globScript(globFile: WomGlobFile): String = {
-    val parentDirectory = globParentDirectory(globFile)
+    val parentDirectory = womFileParentDirectory(globFile)
     val globDir = GlobFunctions.globName(globFile.value)
     val globDirectory = parentDirectory./(globDir)
     val globList = parentDirectory./(s"$globDir.list")
@@ -183,6 +185,35 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
         |""".stripMargin
   }
 
+  /**
+    * Returns the shell scripting for hard linking the directory results using ln.
+    *
+    * @param directories The directories.
+    * @return The shell scripting.
+    */
+  def directoryScripts(directories: Traversable[WomSingleDirectory]): String =
+    directories map directoryScript mkString "\n"
+
+  /**
+    * Returns the shell scripting for hard linking a glob results using ln.
+    *
+    * @param singleDirectory The directory.
+    * @return The shell scripting.
+    */
+  def directoryScript(singleDirectory: WomSingleDirectory): String = {
+    val parentDirectory = womFileParentDirectory(singleDirectory)
+    val dirName = DirectoryFunctions.directoryName(singleDirectory.value)
+    val directoryList = parentDirectory./(s"$dirName.list")
+    val directoryTar = parentDirectory./(s"$dirName.tgz")
+
+    s"""|# tar the directory into a file called dir-[md5 of dir name].tgz
+        |tar czf $directoryTar ${singleDirectory.value}
+        |
+        |# list all the files in the directory into a file called dir-[md5 of dir name].list
+        |find ${singleDirectory.value} -type f > $directoryList
+        |""".stripMargin
+  }
+
   /** Any custom code that should be run within commandScriptContents before the instantiated command. */
   def scriptPreamble: String = ""
 
@@ -194,43 +225,53 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     val rcPath = cwd./(jobPaths.returnCodeFilename)
     val rcTmpPath = rcPath.plusExt("tmp")
 
-    val globFiles: ErrorOr[List[WomGlobFile]] =
+    val errorOrGlobFiles: ErrorOr[List[WomGlobFile]] =
       backendEngineFunctions.findGlobOutputs(call, jobDescriptor)
 
-    globFiles.map(globFiles =>
-    s"""|#!/bin/bash
-        |tmpDir=$$(
-        |  set -e
-        |  cd $cwd
-        |  tmpDir="$temporaryDirectory"
-        |  echo "$$tmpDir"
-        |)
-        |chmod 777 $$tmpDir
-        |export _JAVA_OPTIONS=-Djava.io.tmpdir=$$tmpDir
-        |export TMPDIR=$$tmpDir
-        |(
-        |cd $cwd
-        |SCRIPT_PREAMBLE
-        |)
-        |(
-        |cd $cwd
-        |INSTANTIATED_COMMAND
-        |)
-        |echo $$? > $rcTmpPath
-        |(
-        |cd $cwd
-        |${globScripts(globFiles)}
-        |)
-        |(
-        |cd $cwd
-        |SCRIPT_EPILOGUE
-        |)
-        |mv $rcTmpPath $rcPath
-        |""".stripMargin
-      .replace("SCRIPT_PREAMBLE", scriptPreamble)
-      .replace("INSTANTIATED_COMMAND", instantiatedCommand.commandString)
-      .replace("SCRIPT_EPILOGUE", scriptEpilogue))
+    val errorOrDirectories: ErrorOr[List[WomSingleDirectory]] =
+      backendEngineFunctions.findDirectoryOutputs(call, jobDescriptor)
+
+    (errorOrGlobFiles, errorOrDirectories) mapN {
+      (globFiles, directories) =>
+        s"""|#!/bin/bash
+            |tmpDir=$$(
+            |  set -e
+            |  cd $cwd
+            |  tmpDir="$temporaryDirectory"
+            |  echo "$$tmpDir"
+            |)
+            |chmod 777 $$tmpDir
+            |export _JAVA_OPTIONS=-Djava.io.tmpdir=$$tmpDir
+            |export TMPDIR=$$tmpDir
+            |(
+            |cd $cwd
+            |SCRIPT_PREAMBLE
+            |)
+            |(
+            |cd $cwd
+            |INSTANTIATED_COMMAND
+            |)
+            |echo $$? > $rcTmpPath
+            |(
+            |cd $cwd
+            |${globScripts(globFiles)}
+            |)
+            |(
+            |cd $cwd
+            |${directoryScripts(directories)}
+            |)
+            |(
+            |cd $cwd
+            |SCRIPT_EPILOGUE
+            |)
+            |mv $rcTmpPath $rcPath
+            |""".stripMargin
+          .replace("SCRIPT_PREAMBLE", scriptPreamble)
+          .replace("INSTANTIATED_COMMAND", instantiatedCommand.commandString)
+          .replace("SCRIPT_EPILOGUE", scriptEpilogue)
+    }
   }
+
 
   /** The instantiated command. */
   lazy val instantiatedCommand: InstantiatedCommand = {
@@ -589,7 +630,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
   private def executeOrRecoverSuccess(executionHandle: ExecutionHandle): Future[ExecutionHandle] = {
     executionHandle match {
       case handle: PendingExecutionHandle[StandardAsyncJob@unchecked, StandardAsyncRunInfo@unchecked, StandardAsyncRunStatus@unchecked] =>
-        tellKvJobId(handle.pendingJob).map { case _ =>
+        tellKvJobId(handle.pendingJob).map { _ =>
           jobLogger.info(s"job id: ${handle.pendingJob.jobId}")
           tellMetadata(Map(CallMetadataKeys.JobId -> handle.pendingJob.jobId))
           /*

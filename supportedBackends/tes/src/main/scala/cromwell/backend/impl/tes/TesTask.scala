@@ -1,6 +1,6 @@
 package cromwell.backend.impl.tes
 
-import cromwell.backend.io.GlobFunctions
+import cromwell.backend.io.{DirectoryFunctions, GlobFunctions}
 import cromwell.backend.{BackendConfigurationDescriptor, BackendJobDescriptor}
 import cromwell.core.NoIoFunctionSet
 import cromwell.core.logging.JobLogger
@@ -116,9 +116,31 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
   }
 
   private val womOutputs = outputWomFiles
+    .flatMap(WomFile.flattenFile)
     .zipWithIndex
     .flatMap {
-      case (_: WomSingleDirectory, _) => throw new NotImplementedError("TODO WOM: WOMFILE: Need to handle directories")
+      case (d: WomSingleDirectory, index) =>
+        val directoryName = DirectoryFunctions.directoryName(d.value)
+        val tarName = "dirTar." + index
+        val tarFile = directoryName + ".tgz"
+        val listName =  "dirList." + index
+        val listFile = directoryName + ".list"
+        Seq(
+          Output(
+            name = Option(tarName),
+            description = Option(fullyQualifiedTaskName + "." + tarName),
+            url = Option(tesPaths.storageOutput(tarFile)),
+            path = tesPaths.containerOutput(containerWorkDir, tarFile),
+            `type` = Option("DIRECTORY")
+          ),
+          Output(
+            name = Option(listName),
+            description = Option(fullyQualifiedTaskName + "." + listName),
+            url = Option(tesPaths.storageOutput(listFile)),
+            path = tesPaths.containerOutput(containerWorkDir, listFile),
+            `type` = Option("FILE")
+          )
+        )
       case (f: WomSingleFile, index) =>
         val outputFile = f.value
         Seq(
