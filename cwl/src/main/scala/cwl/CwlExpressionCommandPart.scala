@@ -12,20 +12,26 @@ import wom.values._
 import wom.{CommandPart, InstantiatedCommand}
 
 import scala.util.Try
+import JSArguments.ops._
+import JsCompatible.ops._
+import cwl.ParameterContext.{ECMAScriptSupportedPrimitives, JSMap}
+import shapeless.Coproduct
+
 import scala.language.postfixOps
 
 case class CwlExpressionCommandPart(expr: Expression) extends CommandPart {
   override def instantiate(inputsMap: Map[LocalName, WomValue],
                            functions: IoFunctionSet,
                            valueMapper: (WomValue) => WomValue,
-                           runtimeEnvironment: RuntimeEnvironment ): ErrorOr[InstantiatedCommand] =
+                           runtimeEnvironment: RuntimeEnvironment): ErrorOr[InstantiatedCommand] =
     Try {
-      val stringKeyMap = inputsMap.map { case (LocalName(localName), value) => localName -> value }
+      val stringKeyMap: Map[String, WomValue] = inputsMap.map { case (LocalName(localName), value) => localName -> value }
 
       val pc =
         ParameterContext(
-          runtime = runtimeEnvironment.cwlMap
-        ).withInputs(stringKeyMap, functions)
+          inputs = stringKeyMap.mapValues(v => Coproduct[ECMAScriptSupportedPrimitives](v.convert)),
+          runtime = runtimeEnvironment.convert
+        )
 
       val womValue: WomValue = expr.fold(EvaluateExpression).apply(pc)
 
@@ -40,10 +46,10 @@ case class CommandLineBindingCommandPart(argument: CommandLineBinding) extends C
                            valueMapper: (WomValue) => WomValue,
                            runtimeEnvironment: RuntimeEnvironment): ErrorOr[InstantiatedCommand] =
     Try {
-      val pc = ParameterContext(runtime = runtimeEnvironment.cwlMap).withInputs(inputsMap.map({
-        case (LocalName(localName), sf: WomSingleFile) => localName -> valueMapper(sf)
-        case (LocalName(localName), value) => localName -> value
-      }), functions)
+      val inputs: JSMap = inputsMap.map({
+        case (LocalName(localName), WomSingleFile(path)) => localName -> path.convert
+        case (LocalName(localName), value) => localName -> value.convert
+      })
 
       val womValue: WomValue = argument match {
         case CommandLineBinding(_, _, _, _, _, Some(StringOrExpression.Expression(expression)), Some(false)) =>
