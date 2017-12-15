@@ -13,6 +13,7 @@ metadata {
   "outputs.output_filename_interpolation_wf.output_filename_interpolation.c": "c"
 }
 
+fileSystemCheck: "gcs"
 outputExpectations {
   "gs://cloud-cromwell-dev/output_filename_interpolation_wf/<<UUID>>/call-output_filename_interpolation/Upside": 1
 }
