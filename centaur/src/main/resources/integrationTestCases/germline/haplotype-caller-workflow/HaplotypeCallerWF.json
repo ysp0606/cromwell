@@ -1,0 +1,12 @@
+{
+  "HaplotypeCallerWorkflow.ref_fasta_index": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai",
+  "HaplotypeCallerWorkflow.input_bam_index": "gs://gatk-test-data/wgs_bam/NA12878_24RG_hg38/NA12878_24RG_small.hg38.bai",
+  "HaplotypeCallerWorkflow.calling_interval_list": "gs://gatk-test-data/intervals/hg38_wgs_scattered_calling_intervals.txt",
+  "HaplotypeCallerWorkflow.sample_name": "NA12878",
+  "HaplotypeCallerWorkflow.break_bands_at_multiples_of": "1000000",
+  "HaplotypeCallerWorkflow.scatter_count": "50",
+  "HaplotypeCallerWorkflow.input_bam": "gs://gatk-test-data/wgs_bam/NA12878_24RG_hg38/NA12878_24RG_small.hg38.bam",
+  "HaplotypeCallerWorkflow.contamination": 0.0,
+  "HaplotypeCallerWorkflow.ref_dict": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.dict",
+  "HaplotypeCallerWorkflow.ref_fasta": "gs://broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+}
