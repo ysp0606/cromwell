@@ -3,7 +3,7 @@ testFormat: workflowsuccess
 
 files {
   wdl: germline/haplotype-caller-workflow/HaplotypeCallerWF.wdl
-  inputs: germline/haplotype-caller-workflow/HaplotypeCallerWFjson
+  inputs: germline/haplotype-caller-workflow/HaplotypeCallerWF.json
 }
 
 metadata {
