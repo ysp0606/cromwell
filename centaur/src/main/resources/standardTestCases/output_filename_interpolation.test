@@ -15,5 +15,5 @@ metadata {
 
 fileSystemCheck: "gcs"
 outputExpectations {
-  "gs://cloud-cromwell-dev/output_filename_interpolation_wf/<<UUID>>/call-output_filename_interpolation/Upside": 1
+  "gs://cloud-cromwell-dev/output_filename_interpolation_wf/<<UUID>>/call-output_filename_interpolation/baz": 1
 }
