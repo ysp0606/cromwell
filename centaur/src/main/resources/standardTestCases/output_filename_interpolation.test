@@ -1,4 +1,4 @@
-name: output_filename_interpolation
+name: output_filename_interpolation_jes
 testFormat: workflowsuccess
 
 files {
@@ -11,9 +11,5 @@ metadata {
   "outputs.output_filename_interpolation_wf.output_filename_interpolation.a": "a"
   "outputs.output_filename_interpolation_wf.output_filename_interpolation.b": "b"
   "outputs.output_filename_interpolation_wf.output_filename_interpolation.c": "c"
-}
-
-fileSystemCheck: "gcs"
-outputExpectations {
-  "gs://cloud-cromwell-dev/output_filename_interpolation_wf/<<UUID>>/call-output_filename_interpolation/baz": 1
+  "outputs.output_filename_interpolation_wf.output_filename_interpolation.c": "bar"
 }

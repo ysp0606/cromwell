@@ -13,10 +13,10 @@ task output_filename_interpolation {
     }
 
     output {
-        File f = read_string("baz")
         String a = read_string(outputMain)
         String b = read_string("${outputMain}.${outputSuffix}")
         String c = read_string(outputPrefix + "/" + outputMain + "." + outputSuffix)
+        String d = read_string("baz")
     }
 
     runtime { docker: "ubuntu:latest" }
