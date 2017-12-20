@@ -1,0 +1,13 @@
+name: singlesample_NoNIO
+testFormat: workflowsuccess
+
+files {
+  wdl: Germline/PreProcessing/SingleSample_NoNIO.wdl
+  inputs: Germline/PreProcessing/SingleSample_NoNIO.inputs
+  options: Germline/PreProcessing/SingleSample_NoNIO.options
+}
+
+metadata {
+  workflowName: PairedEndSingleSampleWorkflow
+  status: Succeeded
+}
