@@ -1,0 +1,20 @@
+#Currently this syntax is incompatible with JES, but it shuld become portable to the cloud  with PAPI v2.
+name: local_file_output_evaluation
+testFormat: workflowsuccess
+backends: [Local]
+
+files {
+  wdl: file_output_evaluation/file_output_evaluation.wdl
+}
+
+metadata {
+  workflowName: file_output_evaluation_wf
+  status: Succeeded
+  "outputs.file_output_evaluation_wf.file_output_evaluation.f": ""
+}
+
+fileSystemCheck: "local"
+outputExpectations {
+    "cromwell-executions/file_output_evaluation_wf/<<UUID>>/call-file_output_evaluation/bar": 1
+    "cromwell-executions/file_output_evaluation_wf/<<UUID>>/call-file_output_evaluation/baz": 1
+}

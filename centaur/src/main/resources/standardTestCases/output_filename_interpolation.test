@@ -11,5 +11,4 @@ metadata {
   "outputs.output_filename_interpolation_wf.output_filename_interpolation.a": "a"
   "outputs.output_filename_interpolation_wf.output_filename_interpolation.b": "b"
   "outputs.output_filename_interpolation_wf.output_filename_interpolation.c": "c"
-  "outputs.output_filename_interpolation_wf.output_filename_interpolation.c": "bar"
 }
