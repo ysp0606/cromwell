@@ -8,6 +8,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.services.genomics.model.RunPipelineRequest
 import com.google.cloud.storage.contrib.nio.CloudStorageOptions
+import common.validation.ErrorOr.ErrorOr
 import cromwell.backend._
 import cromwell.backend.async.{AbortedExecutionHandle, ExecutionHandle, FailedNonRetryableExecutionHandle, FailedRetryableExecutionHandle, PendingExecutionHandle}
 import cromwell.backend.impl.jes.RunStatus.TerminalRunStatus
@@ -15,6 +16,7 @@ import cromwell.backend.impl.jes.errors.FailedToDelocalizeFailure
 import cromwell.backend.impl.jes.io._
 import cromwell.backend.impl.jes.statuspolling.JesRunCreationClient.JobAbortedException
 import cromwell.backend.impl.jes.statuspolling.{JesRunCreationClient, JesStatusRequestClient}
+import cromwell.backend.io.GlobFunctions
 import cromwell.backend.standard.{StandardAsyncExecutionActor, StandardAsyncExecutionActorParams, StandardAsyncJob}
 import cromwell.core._
 import cromwell.core.logging.JobLogger
@@ -24,8 +26,6 @@ import cromwell.filesystems.gcs.GcsPath
 import cromwell.filesystems.gcs.batch.GcsBatchCommandBuilder
 import cromwell.services.keyvalue.KeyValueServiceActor._
 import cromwell.services.keyvalue.KvClient
-import common.validation.ErrorOr.ErrorOr
-import cromwell.backend.io.GlobFunctions
 import org.slf4j.LoggerFactory
 import wom.callable.Callable.OutputDefinition
 import wom.core.FullyQualifiedName
@@ -155,7 +155,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
     * relativeLocalizationPath("gs://some/bucket/foo.txt") -> "some/bucket/foo.txt"
     */
   private def relativeLocalizationPath(file: WomFile): WomFile = {
-    WomFile.mapFile(file, value =>
+    file.mapFile(value =>
       getPath(value) match {
         case Success(path) => path.pathWithoutScheme
         case _ => value
@@ -221,6 +221,9 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
 
     val outputs = womFileOutputs.distinct flatMap { womFile =>
       womFile match {
+        case _: WomSingleDirectory =>
+          // TODO: WOM: WOMFILE: Add support for directories.
+          throw new NotImplementedError("Directories are not supported yet.")
         case singleFile: WomSingleFile => List(generateJesSingleFileOutputs(singleFile))
         case globFile: WomGlobFile => generateJesGlobFileOutputs(globFile)
       }
@@ -521,7 +524,7 @@ class JesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
   }
 
   override def mapCommandLineWomFile(womFile: WomFile): WomFile = {
-    WomFile.mapFile(womFile, value =>
+    womFile.mapFile(value =>
       getPath(value) match {
         case Success(gcsPath: GcsPath) => workingDisk.mountPoint.resolve(gcsPath.pathWithoutScheme).pathAsString
         case _ => value
