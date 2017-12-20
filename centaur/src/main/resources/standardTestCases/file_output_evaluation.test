@@ -10,11 +10,11 @@ files {
 metadata {
   workflowName: file_output_evaluation_wf
   status: Succeeded
-  "outputs.file_output_evaluation_wf.file_output_evaluation.f": ""
+  "outputs.file_output_evaluation_wf.file_output_evaluation.f": "/home/travis/build/broadinstitute/cromwell/cromwell-executions/file_output_evaluation_wf/<<UUID>>/call-file_output_evaluation/execution/bar"
 }
 
 fileSystemCheck: "local"
 outputExpectations {
-    "cromwell-executions/file_output_evaluation_wf/<<UUID>>/call-file_output_evaluation/bar": 1
-    "cromwell-executions/file_output_evaluation_wf/<<UUID>>/call-file_output_evaluation/baz": 1
+    "/home/travis/build/broadinstitute/cromwell/cromwell-executions/file_output_evaluation_wf/<<UUID>>/call-file_output_evaluation/execution/bar": 1
+    "/home/travis/build/broadinstitute/cromwell/cromwell-executions/file_output_evaluation_wf/<<UUID>>/call-file_output_evaluation/execution/baz": 1
 }
