@@ -1,11 +1,10 @@
 name: singlesample
 testFormat: workflowsuccess
-ignore: true
+ignore: false
 
 files {
-  wdl: green/singlesample/singlesample.wdl
-  inputs: green/singlesample/singlesample.inputs
-  options: green/singlesample/singlesample.options
+  wdl: germline/single-sample-workflow/PairedEndSingleSampleWf.wdl
+  inputs: germline/single-sample-workflow/PairedEndSingleSampleWf.json
 }
 
 metadata {
