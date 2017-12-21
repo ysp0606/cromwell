@@ -44,7 +44,7 @@ final case class StringDirent(
 
 object InitialWorkDirRequirement {
 
-  final type IwdrListingArrayEntry = File :+: Directory :+: StringDirent :+: ExpressionDirent :+: StringOrExpression :+: CNil
+  final type IwdrListingArrayEntry = File :+: Directory :+: ExpressionDirent :+: StringDirent :+: StringOrExpression :+: CNil
 
   object IwdrListingArrayEntry {
     object StringDirent {
