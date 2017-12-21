@@ -3,6 +3,7 @@ import cwl.CwlType.{CwlType, _}
 import cwl.ExpressionEvaluator.{ECMAScriptExpression, ECMAScriptFunction}
 import common.Checked
 import common.validation.ErrorOr.ErrorOr
+import cwl.InitialWorkDirRequirement.IwdrListingArrayEntry
 import cwl.command.ParentName
 import shapeless._
 import wom.executable.Executable
@@ -60,6 +61,8 @@ package object cwl extends TypeAliases {
   type Expression = ECMAScriptExpression :+: ECMAScriptFunction :+: CNil
 
   object StringOrExpression {
+    def unapply(listing: Array[IwdrListingArrayEntry] :+: StringOrExpression :+: CNil): Option[StringOrExpression] = listing.select[StringOrExpression]
+
     object String {
       def unapply(soe: StringOrExpression): Option[String] = soe.select[String]
     }

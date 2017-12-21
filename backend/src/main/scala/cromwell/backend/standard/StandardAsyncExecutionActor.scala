@@ -242,7 +242,8 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
 
     def adHocFileLocalization(womFile: WomFile): String = womFile.value.substring(womFile.value.lastIndexOf("/") + 1, womFile.value.length)
 
-    val adHocFileCreations: ErrorOr[List[CommandSetupSideEffectFile]] = jobDescriptor.taskCall.callable.adHocFileCreation.toList.traverse { _.evaluateValue(Map.empty, backendEngineFunctions) } map { _ collect {
+    val adHocFileCreationInputs = jobDescriptor.evaluatedTaskInputs.map { case (k,v) => k.localName.value -> v }
+    val adHocFileCreations: ErrorOr[List[CommandSetupSideEffectFile]] = jobDescriptor.taskCall.callable.adHocFileCreation.toList.traverse { _.evaluateValue(adHocFileCreationInputs, backendEngineFunctions) } map { _ collect {
         case f: WomFile => CommandSetupSideEffectFile(f, Option(adHocFileLocalization(f)))
       }
     }

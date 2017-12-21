@@ -106,6 +106,18 @@ final case class InitialWorkDirFileGeneratorExpression(entry: IwdrListingArrayEn
   override def evaluateValue(inputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = entry match {
     case IwdrListingArrayEntry.StringDirent(content, StringOrExpression.String(entryname), _) =>
       Try(Await.result(ioFunctionSet.writeFile(entryname, content), Duration.Inf)).toErrorOr
+    case IwdrListingArrayEntry.StringDirent(content, StringOrExpression.ECMAScriptExpression(entrynameExpression), _) =>
+      val entryNameEvaluation: ErrorOr[String] = ExpressionEvaluator.evalExpression(entrynameExpression, ParameterContext().withInputs(inputValues, ioFunctionSet)) match {
+        case WomString(s) => s.validNel
+        case other => WomStringType.coerceRawValue(other).map(_.asInstanceOf[WomString].value).toErrorOr
+      }
+      import common.validation.ErrorOr.ShortCircuitingFlatMap
+      for {
+        entryNameValidated <- entryNameEvaluation
+        writtenFile <- Try(Await.result(ioFunctionSet.writeFile(entryNameValidated, content), Duration.Inf)).toErrorOr
+      } yield writtenFile
+
+
     case _ => ??? // TODO WOM and the rest....
   }
 

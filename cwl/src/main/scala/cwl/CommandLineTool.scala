@@ -8,6 +8,7 @@ import cwl.CommandLineTool._
 import cwl.CwlType.CwlType
 import cwl.CwlVersion._
 import cwl.command.ParentName
+import cwl.CwlAny.EnhancedCwlAny
 import eu.timepit.refined.W
 import shapeless.syntax.singleton._
 import shapeless.{:+:, CNil, Coproduct, Witness}
@@ -128,7 +129,7 @@ case class CommandLineTool private(
         case CommandInputParameter(id, _, _, _, _, _, _, Some(default), Some(tpe)) =>
           val inputType = tpe.fold(MyriadInputTypeToWomType)
           val inputName = FullyQualifiedName(id).id
-          InputDefinitionWithDefault(inputName, inputType, ValueAsAnExpression(inputType.coerceRawValue(default.toString).get))
+          InputDefinitionWithDefault(inputName, inputType, ValueAsAnExpression(inputType.coerceRawValue(default.stringRepresentation).get))
         case CommandInputParameter(id, _, _, _, _, _, _, None, Some(tpe)) =>
           val inputType = tpe.fold(MyriadInputTypeToWomType)
           val inputName = FullyQualifiedName(id).id
