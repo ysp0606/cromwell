@@ -1,6 +1,5 @@
 name: haplotypcaller
 testFormat: workflowsuccess
-ignore: false
 
 files {
   wdl: germline/haplotype-caller-workflow/HaplotypeCallerWF.wdl

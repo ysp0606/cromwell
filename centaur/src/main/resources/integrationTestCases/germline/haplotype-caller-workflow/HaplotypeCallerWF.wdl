@@ -1,137 +1,165 @@
-task ScatterIntervalList {
-  File interval_list
-  Int scatter_count
-  Int break_bands_at_multiples_of
+## Copyright Broad Institute, 2017
+##
+## This WDL workflow runs HaplotypeCaller from GATK4 in GVCF mode on a single sample
+## according to the GATK Best Practices (June 2016), scattered across intervals.
+##
+## Requirements/expectations :
+## - One analysis-ready BAM file for a single sample (as identified in RG:SM)
+## - Set of variant calling intervals lists for the scatter, provided in a file
+##
+## Outputs :
+## - One GVCF file and its index
+##
+## Cromwell version support
+## - Successfully tested on v29
+## - Does not work on versions < v23 due to output syntax
+##
+## IMPORTANT NOTE: HaplotypeCaller in GATK4 is still in evaluation phase and should not
+## be used in production until it has been fully vetted. In the meantime, use the GATK3
+## version for any production needs.
+##
+## Runtime parameters are optimized for Broad's Google Cloud Platform implementation.
+##
+## LICENSING :
+## This script is released under the WDL source code license (BSD-3) (see LICENSE in
+## https://github.com/broadinstitute/wdl). Note however that the programs it calls may
+## be subject to different licenses. Users are responsible for checking that they are
+## authorized to run all programs before running this script. Please see the dockers
+## for detailed licensing information pertaining to the included programs.
 
-  command <<<
-    mkdir out
-    java -Xmx1g -jar /usr/picard/picard.jar \
-    IntervalListTools \
-    SCATTER_COUNT=${scatter_count} \
-    SUBDIVISION_MODE=BALANCING_WITHOUT_INTERVAL_SUBDIVISION_WITH_OVERFLOW \
-    UNIQUE=true \
-    SORT=true \
-    BREAK_BANDS_AT_MULTIPLES_OF=${break_bands_at_multiples_of} \
-    INPUT=${interval_list} \
-    OUTPUT=out
-    python <<CODE
-    import glob, os
-    # Works around a JES limitation where multiples files with the same name overwrite each other when globbed
-    for i, interval in enumerate(glob.glob("out/*/*.interval_list")):
-        (directory, filename) = os.path.split(interval)
-        newName = os.path.join(directory, str(i) + filename)
-        os.rename(interval, newName)
-    CODE
-  >>>
+# WORKFLOW DEFINITION
+workflow HaplotypeCallerGvcf_GATK4 {
+  File input_bam
+  File input_bam_index
+  File ref_dict
+  File ref_fasta
+  File ref_fasta_index
+  File scattered_calling_intervals_list
+
+  String picard_docker
+  String gatk_docker
+
+  String picard_path
+  String gatk_launch_path
+
+  Array[File] scattered_calling_intervals = read_lines(scattered_calling_intervals_list)
+
+  String sample_basename = basename(input_bam, ".bam")
+
+  String gvcf_name = sample_basename + ".g.vcf.gz"
+  String gvcf_index = sample_basename + ".g.vcf.gz.tbi"
+
+  # Call variants in parallel over grouped calling intervals
+  scatter (interval_file in scattered_calling_intervals) {
+
+    # Generate GVCF by interval
+    call HaplotypeCaller {
+      input:
+        input_bam = input_bam,
+        input_bam_index = input_bam_index,
+        interval_list = interval_file,
+        gvcf_name = gvcf_name,
+        ref_dict = ref_dict,
+        ref_fasta = ref_fasta,
+        ref_fasta_index = ref_fasta_index,
+        docker_image = gatk_docker,
+        gatk_launch_path = gatk_launch_path
+    }
+  }
+
+  # Merge per-interval GVCFs
+  call MergeGVCFs {
+    input:
+      input_vcfs = HaplotypeCaller.output_gvcf,
+      vcf_name = gvcf_name,
+      vcf_index = gvcf_index,
+      docker_image = picard_docker,
+      picard_path = picard_path
+  }
+
+  # Outputs that will be retained when execution is complete
   output {
-    Array[File] out = glob("out/*/*.interval_list")
+    File output_merged_gvcf = MergeGVCFs.output_vcf
+    File output_merged_gvcf_index = MergeGVCFs.output_vcf_index
   }
-
-  runtime {
-    docker: "kcibul/picard"
-    memory: "2 GB"
-  }
-
 }
 
+# TASK DEFINITIONS
+
+# HaplotypeCaller per-sample in GVCF mode
 task HaplotypeCaller {
   File input_bam
   File input_bam_index
-  Float contamination
+  String gvcf_name
+  File ref_dict
+  File ref_fasta
+  File ref_fasta_index
   File interval_list
-  String gvcf_basename
-  File ref_dict
-  File ref_fasta
-  File ref_fasta_index
+  Int? interval_padding
+  Float? contamination
+  Int? max_alt_alleles
 
-  # tried to find lowest memory variable where it would still work, might change once tested on JES
+  Int preemptible_tries
+  Int disk_size
+  String mem_size
+
+  String docker_image
+  String gatk_launch_path
+  String java_opt
+
   command {
-    java -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 -Xmx6000m \
-      -jar /usr/gitc/GenomeAnalysisTK-3.4-g3c929b0.jar \
-      -T HaplotypeCaller \
+    ${gatk_launch_path}gatk-launch --javaOptions ${java_opt} \
+      HaplotypeCaller \
       -R ${ref_fasta} \
-      -o ${gvcf_basename}.vcf.gz \
       -I ${input_bam} \
+      -O ${gvcf_name} \
       -L ${interval_list} \
-      -ERC GVCF \
-      --max_alternate_alleles 3 \
-      -variant_index_parameter 128000 \
-      -variant_index_type LINEAR \
-      -contamination ${contamination} \
-      --read_filter OverclippedRead
+      -ip ${default=100 interval_padding} \
+      -contamination ${default=0 contamination} \
+      --max_alternate_alleles ${default=3 max_alt_alleles} \
+      -ERC GVCF
   }
+
   runtime {
-    docker: "broadinstitute/genomes-in-the-cloud:1.892"
-    memory: "8 GB"
-    cpu: "1"
+    docker: docker_image
+    memory: mem_size
+    disks: "local-disk " + disk_size + " HDD"
   }
+
   output {
-    File gvcf = "${gvcf_basename}.vcf.gz"
-    File gvcf_index = "${gvcf_basename}.vcf.gz.tbi"
+    File output_gvcf = "${gvcf_name}"
   }
 }
 
-task GatherVCFs {
-  Array[File] gvcfs
-  Array[File] gvcfs_indexes
-  String output_gvcf_basename
+# Merge GVCFs generated per-interval for the same sample
+task MergeGVCFs {
+  Array [File] input_vcfs
+  String vcf_name
+  String vcf_index
 
-  # using MergeVcfs instead of GatherVcfs so we can create indicies
-  # WARNING	2015-10-28 15:01:48	GatherVcfs	Index creation not currently supported when gathering block compressed VCFs.
+  Int preemptible_tries
+  Int disk_size
+  String mem_size
+
+  String docker_image
+  String picard_path
+  String java_opt
+
   command {
-    java -Xmx2g -jar /usr/picard/picard.jar \
-    MergeVcfs \
-    INPUT=${sep=' INPUT=' gvcfs} \
-    OUTPUT="${output_gvcf_basename}.vcf.gz"
+    java ${java_opt} -jar ${picard_path}picard.jar \
+      MergeVcfs \
+      INPUT=${sep=' INPUT=' input_vcfs} \
+      OUTPUT=${vcf_name}
   }
-  output {
-    File output_vcf = "${output_vcf_basename}.vcf.gz"
-    File output_vcf_index = "${output_vcf_basename}.vcf.gz.tbi"
-  }
+
   runtime {
-    docker: "kcibul/picard"
-    memory: "3 GB"
-  }
+    docker: docker_image
+    memory: mem_size
+    disks: "local-disk " + disk_size + " HDD"
 }
 
-workflow HaplotypeCallerWorkflow {
-  String sample_name
-  Float contamination
-  Int scatter_count
-  Int break_bands_at_multiples_of
-  File input_bam
-  File input_bam_index
-  File calling_interval_list
-  File ref_fasta
-  File ref_fasta_index
-  File ref_dict
-
-  call ScatterIntervalList {
-      input:
-        interval_list = calling_interval_list,
-        scatter_count = scatter_count,
-        break_bands_at_multiples_of = break_bands_at_multiples_of
-    }
-
-  # Generate gVCF variant calls
-  scatter (subInterval in ScatterIntervalList.out) {
-     call HaplotypeCaller {
-       input:
-         input_bam = input_bam,
-         input_bam_index = input_bam_index,
-         contamination = contamination,
-         interval_list = subInterval,
-         gvcf_basename = sample_name,
-         ref_dict = ref_dict,
-         ref_fasta = ref_fasta,
-         ref_fasta_index = ref_fasta_index
-     }
-  }
-
-  call GatherVCFs {
-    input:
-      gvcfs = HaplotypeCaller.gvcf,
-      gvcfs_indexes = HaplotypeCaller.gvcf_index,
-      output_gvcf_basename = sample_name + ".final"
+  output {
+    File output_vcf = "${vcf_name}"
+    File output_vcf_index = "${vcf_index}"
   }
 }

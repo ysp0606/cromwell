@@ -1,5 +1,13 @@
 
 workflow JointGenotyping {
+  File sitesonlygather_output_vcf
+  File sitesonlygather_output_vcf_index
+      #HardFilter
+  Array[File] hardfilter_variant_filtered_vcf
+  Array[File] hardfilter_variant_filtered_vcf_index
+  Array[File] hardfilter_sites_only_vcf
+  Array[File] hardfilter_sites_only_vcf_index
+
   File unpadded_intervals_file
 
   String callset_name
@@ -57,8 +65,8 @@ workflow JointGenotyping {
 
   call SNPsVariantRecalibratorCreateModel {
     input:
-      sites_only_variant_filtered_vcf = SitesOnlyGatherVcf.output_vcf,
-      sites_only_variant_filtered_vcf_index = SitesOnlyGatherVcf.output_vcf_index,
+      sites_only_variant_filtered_vcf = sitesonlygather_output_vcf,
+      sites_only_variant_filtered_vcf_index = sitesonlygather_output_vcf_index,
       recalibration_filename = callset_name + ".snps.recal",
       tranches_filename = callset_name + ".snps.tranches",
       recalibration_tranche_values = snp_recalibration_tranche_values,
@@ -80,8 +88,8 @@ workflow JointGenotyping {
 
   call IndelsVariantRecalibrator {
     input:
-      sites_only_variant_filtered_vcf = SitesOnlyGatherVcf.output_vcf,
-      sites_only_variant_filtered_vcf_index = SitesOnlyGatherVcf.output_vcf_index,
+      sites_only_variant_filtered_vcf = sitesonlygather_output_vcf,
+      sites_only_variant_filtered_vcf_index = sitesonlygather_output_vcf_index,
       recalibration_filename = callset_name + ".indels.recal",
       tranches_filename = callset_name + ".indels.tranches",
       recalibration_tranche_values = indel_recalibration_tranche_values,
@@ -97,11 +105,11 @@ workflow JointGenotyping {
       gatk_path = gatk_path
   }
 
-  scatter (idx in range(length(HardFilterAndMakeSitesOnlyVcf.sites_only_vcf))) {
+  scatter (idx in range(length(hardfilter_sites_only_vcf))) {
     call SNPsVariantRecalibratorScattered {
       input:
-        sites_only_variant_filtered_vcf = HardFilterAndMakeSitesOnlyVcf.sites_only_vcf[idx],
-        sites_only_variant_filtered_vcf_index = HardFilterAndMakeSitesOnlyVcf.sites_only_vcf_index[idx],
+        sites_only_variant_filtered_vcf = hardfilter_sites_only_vcf[idx],
+        sites_only_variant_filtered_vcf_index = hardfilter_sites_only_vcf_index[idx],
         recalibration_filename = callset_name + ".snps." + idx + ".recal",
         tranches_filename = callset_name + ".snps." + idx + ".tranches",
         recalibration_tranche_values = snp_recalibration_tranche_values,
@@ -135,12 +143,12 @@ workflow JointGenotyping {
   # For anything larger, we need to keep the VCF sharded and gather metrics collected from them.
   Boolean is_small_callset = num_gvcfs <= 1000
 
-  scatter (idx in range(length(HardFilterAndMakeSitesOnlyVcf.variant_filtered_vcf))) {
+  scatter (idx in range(length(hardfilter_variant_filtered_vcf))) {
     call ApplyRecalibration {
       input:
         recalibrated_vcf_filename = callset_name + ".filtered." + idx + ".vcf.gz",
-        input_vcf = HardFilterAndMakeSitesOnlyVcf.variant_filtered_vcf[idx],
-        input_vcf_index = HardFilterAndMakeSitesOnlyVcf.variant_filtered_vcf_index[idx],
+        input_vcf = hardfilter_variant_filtered_vcf[idx],
+        input_vcf_index = hardfilter_variant_filtered_vcf_index[idx],
         indels_recalibration = IndelsVariantRecalibrator.recalibration,
         indels_recalibration_index = IndelsVariantRecalibrator.recalibration_index,
         indels_tranches = IndelsVariantRecalibrator.tranches,
