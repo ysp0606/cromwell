@@ -99,7 +99,7 @@ trait TypeAliases {
 
 object CwlAny {
   implicit class EnhancedCwlAny(val cwlAny: CwlAny) extends AnyVal {
-    def stringRepresentation: String = cwlAny.select[Json] flatMap { json => json.asString } getOrElse "CwlAny (not Json)"
+    def stringRepresentation: String = cwlAny.select[Json] map { json => json.asString.getOrElse(json.toString) } getOrElse "CwlAny (not Json)"
   }
 }
 
