@@ -10,7 +10,7 @@ import cromwell.core.Dispatcher._
 import cromwell.services.metadata._
 import cromwell.services.metadata.MetadataService.{MetadataWriteFailure, MetadataWriteSuccess, PutMetadataAction, PutMetadataActionAndRespond}
 import net.ceedubs.ficus.Ficus._
-import org.broadinstitute.dsde.workbench.google.HttpGooglePubSubDAO
+import org.broadinstitute.dsde.workbench.google.{GooglePubSubDAO, HttpGooglePubSubDAO}
 import spray.json._
 
 import scala.concurrent.Future
@@ -20,18 +20,30 @@ import scala.util.{Failure, Success}
   * A *write-only* metadata service implementation which pushes all events to Google PubSub. The expectation is that
   * metadata reads are being handled outside of this Cromwell instance.
   *
+  * For now it requires a google service account auth with a PEM file. If the underlying PubSub library is updated to
+  * allow for other forms of auth this becomes viable for us. Note that currently Cromwell complains that PEM is
+  * deprecated, so we might need to contribute a patch to workbench-lib's pubsub tooling.
+  *
+  * This is intentionally not documented, considering there exists no way to consume/read metadata if this is active,
+  * anyone using this is by definition more advanced than the Cromwell developers
+  *
   * TODO (maybe):
   *  - This will probably need some measure of batching, need to see it in action before proceeding down that path
   *  - Graceful shutdown could also be useful. The pubsub calls will autoretry in the face of transient errors which
   *     means there might be stuff hanging around on a shutdown request.
   *  - Currently service actors which fail to instantiate properly don't bring down Cromwell. It's easier to screw
   *     it up here, we might want to revisit that strategy
+  *  - The pubsub library is wired into Workbench's generic instrumentation. I have no idea how it works or if we want
+  *      to use it as-is. For now I put some bogus metric name in there. It didn't explode, and if they come asking WTF
+  *      this is we know it's "working"
   */
 final case class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig: Config) extends Actor with ActorLogging {
   implicit val ec = context.dispatcher
 
-  val googleProject = serviceConfig.as[String]("project")
+  // The auth *must* be a service account auth but it might not be named service-account.
   val googleAuthName = serviceConfig.as[Option[String]]("auth").getOrElse("service-account")
+
+  val googleProject = serviceConfig.as[String]("project")
   val pubSubTopicName = serviceConfig.as[Option[String]]("topic").getOrElse("cromwell-metadata")
   val pubSubSubscriptionName = serviceConfig.as[Option[String]]("subscription")
   val pubSubAppName = serviceConfig.as[Option[String]]("appName").getOrElse("cromwell")
@@ -58,14 +70,15 @@ final case class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig:
     events.map(_.toJson.toString()).toSeq
   }
 
-  private def createPubSubConnection(): HttpGooglePubSubDAO = {
+  private def createPubSubConnection(): GooglePubSubDAO = {
     implicit val as = context.system
 
     val googleConfig = GoogleConfiguration(globalConfig)
+
     // This class requires a service account auth due to the library used
     val googleAuth = googleConfig.auth(googleAuthName) match {
       case Valid(a: ServiceAccountMode) => a
-      case Valid(doh) => throw new IllegalArgumentException(s"Unable to configure PubSubMetadataServiceActor, ${doh.name} was not a service account auth")
+      case Valid(doh) => throw new IllegalArgumentException(s"Unable to configure PubSubMetadataServiceActor: ${doh.name} was not a service account auth")
       case Invalid(e) => throw new IllegalArgumentException("Unable to configure PubSubMetadataServiceActor: " + e.toList.mkString(", "))
     }
 
@@ -74,13 +87,8 @@ final case class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig:
       case _ => throw new IllegalArgumentException("Unable to configure PubSubMetadataServiceActor: the service account must supply a PEM file")
     }
 
-    /*
-      TODO:
-
-      we'll need to figure out how to handle the fact that this is forcibly tied in to the workbench instrumentation,
-      for now putting in a silly metric name
-    */
-    new HttpGooglePubSubDAO(pemFile.accountId, pemFile.file, pubSubAppName, googleProject, "some-dumb-metric-name")
+    // TODO: The metric name will likely need to be changed when we figure out what to do w/ the workbench instrumentaiton
+    new HttpGooglePubSubDAO(pemFile.accountId, pemFile.file, pubSubAppName, googleProject, "some-dumb-cromwell-metric-name")
   }
 
   /**
