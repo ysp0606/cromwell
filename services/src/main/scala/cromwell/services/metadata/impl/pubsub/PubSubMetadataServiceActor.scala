@@ -37,7 +37,7 @@ import scala.util.{Failure, Success}
   *      to use it as-is. For now I put some bogus metric name in there. It didn't explode, and if they come asking WTF
   *      this is we know it's "working"
   */
-final case class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig: Config) extends Actor with ActorLogging {
+class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig: Config) extends Actor with ActorLogging {
   implicit val ec = context.dispatcher
 
   // The auth *must* be a service account auth but it might not be named service-account.
@@ -54,23 +54,17 @@ final case class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig:
 
   def receive = {
     case action: PutMetadataAction =>
-      pubSubConnection.publishMessages(pubSubTopicName, eventsToJson(action.events)).failed foreach { e =>
+      publishMessages(action.events).failed foreach { e =>
         log.error(e, "Failed to post metadata: " + action.events)
       }
     case action: PutMetadataActionAndRespond =>
-      pubSubConnection.publishMessages(pubSubTopicName, eventsToJson(action.events)) onComplete {
+      publishMessages(action.events) onComplete {
         case Success(_) => action.replyTo ! MetadataWriteSuccess(action.events)
         case Failure(e) => action.replyTo ! MetadataWriteFailure(e, action.events)
       }
   }
 
-  private def eventsToJson(events: Iterable[MetadataEvent]): Seq[String] = {
-    import MetadataJsonSupport._
-
-    events.map(_.toJson.toString()).toSeq
-  }
-
-  private def createPubSubConnection(): GooglePubSubDAO = {
+  protected[this] def createPubSubConnection(): GooglePubSubDAO = {
     implicit val as = context.system
 
     val googleConfig = GoogleConfiguration(globalConfig)
@@ -97,6 +91,7 @@ final case class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig:
     * exist (in fact, this is a likely circumstance).
     */
   private def createTopicAndSubscription(): Future[Unit] = {
+    log.debug("Ensuring topic " + pubSubTopicName + " exists")
     pubSubConnection.createTopic(pubSubTopicName) map { _ => createSubscription() } map { _ => () }
   }
 
@@ -107,15 +102,33 @@ final case class PubSubMetadataServiceActor(serviceConfig: Config, globalConfig:
     */
   private def createSubscription(): Future[Unit] = {
     pubSubSubscriptionName match {
-      case Some(name) => pubSubConnection.createSubscription(pubSubTopicName, name) map { _ => () }
-      case None => Future.successful(())
+      case Some(name) =>
+        log.debug("Creating subscription " + name)
+        pubSubConnection.createSubscription(pubSubTopicName, name) map { _ => () }
+      case None =>
+        log.debug("Not creating a subscription")
+        Future.successful(())
     }
+  }
+
+  private def publishMessages(events: Iterable[MetadataEvent]): Future[Unit] = {
+    import PubSubMetadataServiceActor.EnhancedMetadataEvents
+
+    val eventsJson = events.toJson
+    log.debug("Publishing to " + pubSubTopicName + ": " + eventsJson)
+    pubSubConnection.publishMessages(pubSubTopicName, eventsJson)
   }
 }
 
 object PubSubMetadataServiceActor {
   def props(serviceConfig: Config, globalConfig: Config) = {
-    Props(PubSubMetadataServiceActor(serviceConfig, globalConfig)).withDispatcher(ServiceDispatcher)
+    Props(new PubSubMetadataServiceActor(serviceConfig, globalConfig)).withDispatcher(ServiceDispatcher)
+  }
+
+  implicit class EnhancedMetadataEvents(val e: Iterable[MetadataEvent]) extends AnyVal {
+    import MetadataJsonSupport._
+
+    def toJson: Seq[String] = e.map(_.toJson.toString()).toSeq
   }
 }
 
