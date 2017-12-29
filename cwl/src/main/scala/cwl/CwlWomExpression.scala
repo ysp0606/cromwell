@@ -1,14 +1,13 @@
 package cwl
 
 import cats.syntax.option._
-import common.validation.ErrorOr.ErrorOr
-import common.validation.Validation._
-import wom.types._
-import wom.values._
-import wom.expression.{IoFunctionSet, WomExpression}
 import cats.syntax.validated._
+import common.validation.ErrorOr.ErrorOr
 import cwl.WorkflowStepInput.InputSource
 import cwl.command.ParentName
+import wom.expression.{IoFunctionSet, WomExpression}
+import wom.types._
+import wom.values._
 
 sealed trait CwlWomExpression extends WomExpression {
 
@@ -17,57 +16,44 @@ sealed trait CwlWomExpression extends WomExpression {
   override def evaluateType(inputTypes: Map[String, WomType]): ErrorOr[WomType] = cwlExpressionType.validNel
 }
 
-case class CommandOutputExpression(outputBinding: CommandOutputBinding,
-                                   override val cwlExpressionType: WomType,
-                                   override val inputs: Set[String]) extends CwlWomExpression {
+case class CommandOutputExpression
+(
+  outputBinding: CommandOutputBinding,
+  override val cwlExpressionType: WomType,
+  override val inputs: Set[String],
+  secondaryFilesCoproduct: Option[SecondaryFiles] = None,
+  formatCoproduct: Option[StringOrExpression] = None //only valid when type: File
+) extends CwlWomExpression {
 
   // TODO WOM: outputBinding.toString is probably not be the best representation of the outputBinding
   override def sourceString = outputBinding.toString
 
+  // TODO: WOM: Can these also be wrapped in a WomOptional if the cwlExpressionType is '[null, File]'? Write a test and see what cromwell/salad produces
   override def evaluateValue(inputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = {
-    val parameterContext = ParameterContext.Empty.withInputs(inputValues, ioFunctionSet)
-
-    //To facilitate ECMAScript evaluation, filenames are stored in a map under the key "location"
-    val womValue = outputBinding.
-      commandOutputBindingToWomValue(parameterContext, ioFunctionSet) match {
-        case WomArray(_, Seq(WomMap(WomMapType(WomStringType, WomStringType), map))) => map(WomString("location"))
-        case other => other
-      }
-
-    //If the value is a string but the output is expecting a file, we consider that string a POSIX "glob" and apply
-    //it accordingly to retrieve the file list to which it expands.
-    val globbedIfFile =
-      (womValue, cwlExpressionType) match {
-
-        //In the case of a single file being expected, we must enforce that the glob only represents a single file
-        case (WomString(glob), WomSingleFileType) =>
-          ioFunctionSet.glob(glob) match {
-            case head :: Nil => WomString(head)
-            case list => throw new RuntimeException(s"expecting a single File glob but instead got $list")
-          }
-
-        case _ => womValue
-      }
-
-    //CWL tells us the type this output is expected to be.  Attempt to coerce the actual output into this type.
-    cwlExpressionType.coerceRawValue(globbedIfFile).toErrorOr
+    outputBinding.generateOutputWomValue(
+      inputValues,
+      ioFunctionSet,
+      cwlExpressionType,
+      secondaryFilesCoproduct,
+      formatCoproduct)
   }
 
-  /*
-  TODO:
-   DB: It doesn't make sense to me that this function returns type WomFile but accepts a type to which it coerces.
-   Wouldn't coerceTo always == WomFileType, and if not then what?
-   */
-  override def evaluateFiles(inputs: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType): ErrorOr[Set[WomFile]] = {
-
-    val pc = ParameterContext().withInputs(inputs, ioFunctionSet)
-
-    val files = for {
-      globValue <- outputBinding.glob.toList
-      path <- GlobEvaluator.globPaths(globValue, pc, ioFunctionSet).toList
-    } yield WomGlobFile(path): WomFile
-
-    files.toSet.validNel[String]
+  /**
+    * Returns the list of files that _will be_ output after the command is run.
+    *
+    * In CWL, a list of outputs is specified as glob, say `*.bam`, plus a list of secondary files that may be in the
+    * form of paths or specified using carets such as `^.bai`.
+    *
+    * The coerceTo may be one of four different values:
+    * - WomSingleFileType
+    * - WomArrayType(WomSingleFileType)
+    * - WomSingleDirectoryType
+    * - WomArrayType(WomSingleDirectoryType) (Possible according to the way the spec is written, but not likely?)
+    */
+  override def evaluateFiles(inputValues: Map[String, WomValue],
+                             ioFunctionSet: IoFunctionSet,
+                             coerceTo: WomType): ErrorOr[Set[WomFile]] = {
+    outputBinding.primaryAndSecondaryFiles(inputValues, ioFunctionSet, coerceTo, secondaryFilesCoproduct).map(_.toSet)
   }
 }
 
@@ -92,5 +78,3 @@ final case class WorkflowStepInputExpression(input: WorkflowStepInput, override 
     case WorkflowStepInputSource.StringArray(sa) => sa.map(FullyQualifiedName(_).id).toSet
   }}
 }
-
-

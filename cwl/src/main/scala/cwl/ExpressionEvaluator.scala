@@ -1,5 +1,6 @@
 package cwl
 
+import common.validation.ErrorOr.ErrorOr
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.string.MatchesRegex
 import shapeless.Witness
@@ -20,15 +21,15 @@ object ExpressionEvaluator {
   type MatchesECMAFunction = MatchesRegex[ECMAScriptFunctionWitness.T]
 
 
-  def evalExpression(expression: ECMAScriptExpression, parameterContext: ParameterContext): WomValue = {
+  def evalExpression(expression: ECMAScriptExpression)(parameterContext: ParameterContext): ErrorOr[WomValue] = {
     val ECMAScriptExpressionRegex = ECMAScriptExpressionWitness.value.r
     expression.value match {
-      case ECMAScriptExpressionRegex(script) => JsUtil.eval(script, paramValues(parameterContext))
+      case ECMAScriptExpressionRegex(script) => eval(script, parameterContext)
       case _ => throw new RuntimeException(s"Expression was unable to be matched to Regex. This is never supposed to happen thanks to our JSON parsing library")
     }
   }
 
-  def evalFunction(function: ECMAScriptFunction, parameterContext: ParameterContext): WomValue = {
+  def evalFunction(function: ECMAScriptFunction)(parameterContext: ParameterContext): ErrorOr[WomValue] = {
     val ECMAScriptFunctionRegex = ECMAScriptFunctionWitness.value.r
     function.value match {
       case ECMAScriptFunctionRegex(script) =>
@@ -37,17 +38,29 @@ object ExpressionEvaluator {
               |FUNCTION_BODY
               |})();
               |""".stripMargin.replaceAll("FUNCTION_BODY", script)
-
-        JsUtil.eval(functionExpression, paramValues(parameterContext))
+        eval(functionExpression, parameterContext)
       case _ => throw new RuntimeException(s"Expression was unable to be matched to Regex. This is never supposed to happen thanks to our JSON parsing library")
     }
   }
 
-  def paramValues(parameterContext: ParameterContext) =
-    Map(
-      "inputs" -> parameterContext.inputs,
-      "runtime" -> parameterContext.runtime,
-      "self" -> parameterContext.self
+  private lazy val cwlJsEncoder = new CwlJsEncoder()
+  private lazy val cwlJsDecoder = new CwlJsDecoder()
+
+  def eval(expr: String, parameterContext: ParameterContext): ErrorOr[WomValue] = {
+    val (rawValues, mapValues) = paramValues(parameterContext)
+    JsUtil.evalStructish(expr, rawValues, mapValues, cwlJsEncoder, cwlJsDecoder)
+  }
+
+  def paramValues(parameterContext: ParameterContext): (Map[String, WomValue], Map[String, Map[String, WomValue]]) = {
+    (
+      Map(
+        "self" -> parameterContext.self
+      ),
+      Map(
+        "inputs" -> parameterContext.inputs,
+        "runtime" -> parameterContext.runtime
+      )
     )
+  }
 
 }
