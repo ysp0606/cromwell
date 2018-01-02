@@ -1,117 +1,57 @@
 package cwl
 
-import cwl.ParameterContext.{ECMAScriptSupportedPrimitive, ECMAScriptSupportedPrimitives, JSMap}
+import cats.data.NonEmptyList
 import shapeless.{:+:, CNil, Coproduct}
 import simulacrum.typeclass
 import wom.callable.RuntimeEnvironment
 import wom.types.WomNothingType
-import wom.values.{WomInteger, WomOptionalValue, WomString, WomValue}
+import wom.values.{WomArray, WomBoolean, WomFloat, WomInteger, WomMap, WomOptionalValue, WomSingleFile, WomString, WomValue}
+import cats.syntax.traverse._
+import cats.syntax.apply._
+import cats.syntax.validated._
+import cats.instances.map._
+import common.validation.ErrorOr.ErrorOr
 
+import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
 object ParameterContext {
   val Empty = ParameterContext()
-
-  type ECMAScriptSupportedPrimitive =
-    Int :+:
-    Double :+:
-      Boolean :+:
-      String :+:
-      CNil
-
-  type ECMAScriptSupportedPrimitives =
-    ECMAScriptSupportedPrimitive :+:
-      Array[ECMAScriptSupportedPrimitive] :+:
-      CNil
-
-  def liftPrimitive: ECMAScriptSupportedPrimitive => ECMAScriptSupportedPrimitives = Coproduct[ECMAScriptSupportedPrimitives].apply
-
-  def liftArrayOfPrimitives: Array[ECMAScriptSupportedPrimitive] => ECMAScriptSupportedPrimitives = Coproduct[ECMAScriptSupportedPrimitives].apply
-
-  type JSMap = Map[String, ECMAScriptSupportedPrimitives]
 }
 
-/**
-  * Used to convert case classes into sets of JS arguments
-  */
-@typeclass trait JSArguments[A] {
-  def convert(a: A): JSMap
-}
+case class ParameterContext(private val inputs: Map[String, AnyRef] = Map.empty,
+                       private val self: Array[Map[String, String]] = Array.empty,
+                       private val runtime: Map[String, AnyRef] = Map.empty) {
 
-
-object JSArguments {
-  def apply[A](f: A => JSMap): JSArguments[A] = new JSArguments[A] {
-    override def convert(a: A): JSMap = f(a)
+  def addInputs(womMap: Map[String, WomValue]): Either[NonEmptyList[String], ParameterContext] = {
+    val x: ErrorOr[Map[String, AnyRef]] = womMap.traverse({
+      case (key, womValue) => (key.validNel[String], toJavascript(womValue)).tupled
+    })
   }
 
-  implicit final val rc: JSArguments[RuntimeEnvironment] =
+  def setSelf(newSelf: Array[Map[String, String]]): ParameterContext = this.copy(self = newSelf)
 
-    JSArguments{ (rc:RuntimeEnvironment) =>
-      import rc._
-      Map(
-        "outdir" -> outputPath,
-        "tmpdir" -> tempPath,
-        "cores" -> cores.toString,
-        "ram" -> ram.toString,
-        "outdirSize" -> outputPathSize.toString,
-        "tmpdirSize" -> tempPathSize.toString
-      ).mapValues(_.convert).mapValues(Coproduct[ECMAScriptSupportedPrimitives].apply _)
+  def ecmaScriptValues:java.util.Map[String, AnyRef] =
+    Map(
+      "inputs" -> inputs.asInstanceOf[AnyRef],
+      "runtime" -> runtime.asInstanceOf[AnyRef],
+      "self" -> self.asInstanceOf[AnyRef]
+    ).asJava
+
+  private def toJavascript(value: WomValue): ErrorOr[AnyRef] = {
+    value match {
+      case WomOptionalValue(WomNothingType, None) => null
+      case WomString(string) => string.validNel
+      case WomInteger(int) => int.asInstanceOf[java.lang.Integer].validNel
+      case WomFloat(double) => double.asInstanceOf[java.lang.Double].validNel
+      case WomBoolean(boolean) => boolean.asInstanceOf[java.lang.Boolean].validNel
+      case WomArray(_, array) => array.map(toJavascript).toArray.validNel
+      case WomSingleFile(path) => path.validNel
+      case WomMap(_, map) =>
+        map.traverse({
+          case (mapKey, mapValue) => (toJavascript(mapKey), toJavascript(mapValue)).tupled
+        }).asJava.validNel
+      case _ => (s"Value is unsupported in JavaScript: $value").invalidNel
     }
+  }
 }
-
-/**
-  * Used to convert low level types to low-level JS-compatible types.
-  */
-@typeclass trait JsCompatible[A] {
-  def convert(a: A): ECMAScriptSupportedPrimitive
-}
-
-object JsCompatible {
-  def apply[A](f: A => ECMAScriptSupportedPrimitive): JsCompatible[A] = new JsCompatible[A] {
-    override def convert(a: A): ECMAScriptSupportedPrimitive = f(a)
-  }
-
-  //use kittens or somehow derive typeclass instances for WOM?
-  implicit final val string = new JsCompatible[String] {
-    override def convert(a: String): ECMAScriptSupportedPrimitive = Coproduct[ECMAScriptSupportedPrimitive](a)
-  }
-
-  implicit final val integer = new JsCompatible[Int] {
-    override def convert(a: Int): ECMAScriptSupportedPrimitive = Coproduct[ECMAScriptSupportedPrimitive](a)
-  }
-
-  implicit final val womInteger = new JsCompatible[WomInteger] {
-    override def convert(a: WomInteger): ECMAScriptSupportedPrimitive = Coproduct[ECMAScriptSupportedPrimitive](a.value)
-  }
-
-  implicit final val womString = new JsCompatible[WomString] {
-    override def convert(a: WomString): ECMAScriptSupportedPrimitive = Coproduct[ECMAScriptSupportedPrimitive](a.value)
-  }
-
-  implicit final val womValue =
-    new JsCompatible[WomValue] {
-      override def convert(wv: WomValue): ECMAScriptSupportedPrimitive =
-        wv match {
-          case WomOptionalValue(WomNothingType, None) => null
-          case ws: WomString => womString.convert(ws)
-          case wi: WomInteger => womInteger.convert(wi)
-          /*
-        case WomFloat(double) => double.asInstanceOf[java.lang.Double]
-        case WomBoolean(boolean) => boolean.asInstanceOf[java.lang.Boolean]
-        case WomArray(_, array) => array.map(toJavascript).toArray
-        case WomSingleFile(path) => path
-        case WomMap(_, map) =>
-          map.map({
-            case (mapKey, mapValue) => toJavascript(mapKey) -> toJavascript(mapValue)
-          }).asJava
-          */
-          case _ => throw new IllegalArgumentException(s"Unexpected value: $wv")
-        }
-    }
-}
-
-
-
-case class ParameterContext(inputs: JSMap = Map.empty,
-                            self: Array[JSMap] = Array.empty,
-                            runtime: JSMap = Map.empty)

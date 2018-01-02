@@ -47,9 +47,11 @@ case class CommandLineBindingCommandPart(argument: CommandLineBinding) extends C
                            runtimeEnvironment: RuntimeEnvironment): ErrorOr[InstantiatedCommand] =
     Try {
       val inputs: JSMap = inputsMap.map({
-        case (LocalName(localName), WomSingleFile(path)) => localName -> path.convert
-        case (LocalName(localName), value) => localName -> value.convert
+        case (LocalName(localName), WomSingleFile(path)) => localName -> Coproduct[ECMAScriptSupportedPrimitives](path.convert)
+        case (LocalName(localName), value) => localName -> Coproduct[ECMAScriptSupportedPrimitives](value.convert)
       })
+
+      val pc = ParameterContext(inputs)
 
       val womValue: WomValue = argument match {
         case CommandLineBinding(_, _, _, _, _, Some(StringOrExpression.Expression(expression)), Some(false)) =>

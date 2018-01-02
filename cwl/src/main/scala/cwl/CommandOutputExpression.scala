@@ -6,13 +6,15 @@ import shapeless.Coproduct
 import wom.expression.IoFunctionSet
 import wom.types._
 import wom.values.{WomArray, WomFile, WomGlobFile, WomMap, WomString, WomValue}
-import JsCompatible.ops._
 import mouse.all._
+import cats.syntax.validated._
+import cats.syntax.either._
 
 import scala.concurrent.Await
 import common.validation.Validation._
 import cats.data.Validated._
 import ParameterContext.liftPrimitive
+import cats.data.NonEmptyList
 
 import scala.language.postfixOps
 import scala.concurrent.Await
@@ -25,9 +27,11 @@ case class CommandOutputExpression(outputBinding: CommandOutputBinding,
   // TODO WOM: outputBinding.toString is probably not be the best representation of the outputBinding
   override def sourceString = outputBinding.toString
 
+
+
   override def evaluateValue(inputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = {
 
-    val parameterContext = ParameterContext(inputs = inputValues.mapValues(_.convert).mapValues(liftPrimitive))
+    val parameterContext = ParameterContext().addInputs(inputValues)
 
     /*
     CommandOutputBinding.glob:
@@ -38,67 +42,65 @@ case class CommandOutputExpression(outputBinding: CommandOutputBinding,
 
     http://www.commonwl.org/v1.0/CommandLineTool.html#CommandOutputBinding
      */
-    def commandOutputBindingToWomValue: WomValue = {
+    def commandOutputBindingToWomValue: Either[NonEmptyList[String], WomValue] = {
       import StringOrExpression._
-      outputBinding match {
-        case CommandOutputBinding(_, _, Some(String(value))) => WomString(value)
-        case CommandOutputBinding(Some(glob), _, None) => WomArray(WomArrayType(WomStringType), GlobEvaluator.globPaths(glob, parameterContext, ioFunctionSet).map(WomString.apply))
+      (outputBinding, parameterContext) match {
+        case (CommandOutputBinding(_, _, Some(String(value))), Right(_)) => WomString(value).asRight
+        case (CommandOutputBinding(Some(glob), _, None), Right(parameterContext)) =>
+              WomArray(WomArrayType(WomStringType), GlobEvaluator.globPaths(glob, parameterContext, ioFunctionSet).map(WomString.apply)).asRight
 
-        case CommandOutputBinding(glob, loadContents, Some(Expression(expression))) =>
+        case (CommandOutputBinding(glob, loadContents, Some(Expression(expression))), Right(parameterContext)) =>
 
-          val paths: Seq[String] = glob map { globValue =>
+          val paths: Seq[String] = glob.toSeq flatMap { globValue =>
             GlobEvaluator.globPaths(globValue, parameterContext, ioFunctionSet)
-          } getOrElse {
-            Vector.empty
           }
 
           val _loadContents: Boolean = loadContents getOrElse false
 
-          val womMaps: Array[JSMap] =
+          val womMaps: Array[Map[String, String]] =
             paths.map({
               (path:String) =>
                 // TODO: WOM: basename/dirname/size/checksum/etc.
 
-                val contents: JSMap =
-                  if (_loadContents)
-                    Map("contents" -> Coproduct[ECMAScriptSupportedPrimitives](load64KiB(path, ioFunctionSet).convert))
-                  else
-                    Map.empty
+                val contents: Map[String, String] =
+                    Map("contents" -> load64KiB(path, ioFunctionSet)).filter(_ => _loadContents)
 
                 Map(
-                  "location" -> Coproduct[ECMAScriptSupportedPrimitives](path.convert)
+                  "location" -> path
                 ) ++ contents
             }).toArray
 
-          val outputEvalParameterContext = parameterContext.copy(self = womMaps)
+          val outputEvalParameterContext: ParameterContext = parameterContext.setSelf(womMaps)
 
-          expression.fold(EvaluateExpression).apply(outputEvalParameterContext)
+          expression.fold(EvaluateExpression).apply(outputEvalParameterContext).asRight
       }
     }
     //To facilitate ECMAScript evaluation, filenames are stored in a map under the key "location"
     val womValue =
-      commandOutputBindingToWomValue match {
+      commandOutputBindingToWomValue map {
         case WomArray(_, Seq(WomMap(WomMapType(WomStringType, WomStringType), map))) => map(WomString("location"))
         case other => other
       }
 
+
+
     //If the value is a string but the output is expecting a file, we consider that string a POSIX "glob" and apply
     //it accordingly to retrieve the file list to which it expands.
-    val globbedIfFile =
+    val globbedIfFile:ErrorOr[WomValue] =
       (womValue, cwlExpressionType) match {
 
         //In the case of a single file being expected, we must enforce that the glob only represents a single file
-        case (WomString(glob), WomSingleFileType) =>
+        case (Right(WomString(glob)), WomSingleFileType) =>
           ioFunctionSet.glob(glob) match {
-            case head :: Nil => WomString(head)
-            case list => throw new RuntimeException(s"expecting a single File glob but instead got $list")
+            case head :: Nil => WomString(head).validNel
+            case list => s"expecting a single File glob but instead got $list".invalidNel
           }
 
-        case _  => womValue
+        case (other, _) => other.toValidated
       }
 
     //CWL tells us the type this output is expected to be.  Attempt to coerce the actual output into this type.
-    cwlExpressionType.coerceRawValue(globbedIfFile).toErrorOr
+    globbedIfFile.toTry.flatMap(cwlExpressionType.coerceRawValue).toErrorOr
   }
 
   /*
@@ -108,7 +110,7 @@ case class CommandOutputExpression(outputBinding: CommandOutputBinding,
    */
   override def evaluateFiles(inputs: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType): ErrorOr[Set[WomFile]] ={
 
-    val pc = ParameterContext(inputs.mapValues(_.convert).mapValues(liftPrimitive))
+    val pc = ParameterContext().addInputs(inputs)
 
     val files = for {
       globValue <- outputBinding.glob.toList

@@ -1,7 +1,8 @@
-package wom.util
+package cwl
 
 import javax.script.{ScriptContext, SimpleScriptContext}
 
+import cwl.ParameterContext.JSMap
 import jdk.nashorn.api.scripting.{ClassFilter, NashornScriptEngineFactory, ScriptObjectMirror}
 import wom.types._
 import wom.values._
@@ -30,11 +31,10 @@ object JsUtil {
     * @param values A map filled with WOM values.
     * @return The result of the expression.
     */
-  def eval(expr: String, values: Map[String, WomValue] = Map.empty): WomValue = {
+  def eval(expr: String, javascriptValues: java.util.Map[String, AnyRef]): WomValue = {
     val engine = ScriptEngineFactory.getScriptEngine(nashornStrictArgs, getNashornClassLoader, noJavaClassFilter)
 
     val bindings = engine.createBindings()
-    val javascriptValues = values.mapValues(toJavascript).asJava
     bindings.asInstanceOf[java.util.Map[String, Any]].putAll(javascriptValues)
 
     val context = new SimpleScriptContext

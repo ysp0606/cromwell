@@ -1,8 +1,8 @@
-package wdl.util
+package cwl
 
 import org.scalatest.{FlatSpec, Matchers}
 import wom.types._
-import wom.util.JsUtil
+import JsUtil
 import wom.values._
 
 class JsUtilSpec extends FlatSpec with Matchers {
