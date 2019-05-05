@@ -1,14 +1,17 @@
 package cromwell.backend.impl.bcs
 
+import com.aliyuncs.auth.BasicSessionCredentials
+import com.aliyuncs.auth.BasicCredentials
+
 import com.aliyuncs.batchcompute.main.v20151111.BatchComputeClient
 import com.typesafe.config.{Config, ConfigFactory}
 import cromwell.backend.BackendConfigurationDescriptor
 import net.ceedubs.ficus.Ficus._
-import cromwell.engine.backend.{BackendConfigurationEntry}
+import cromwell.engine.backend.BackendConfigurationEntry
+import cromwell.backend.impl.bcs.callcaching.{CopyCachedOutputs, UseOriginalCachedOutputs}
 import scala.collection.JavaConverters._
-
 import scala.util.{Failure, Success, Try}
-
+import cromwell.core.DockerConfiguration
 
 object BcsConfiguration{
   val OssEndpointKey = "ossEndpoint"
@@ -72,6 +75,35 @@ final class BcsConfiguration(val configurationDescriptor: BackendConfigurationDe
   val ossAccessKey = configurationDescriptor.backendConfig.as[Option[String]]("filesystems.oss.auth.access-key").getOrElse("")
   val ossSecurityToken = configurationDescriptor.backendConfig.as[Option[String]]("filesystems.oss.auth.security-token").getOrElse("")
 
+  val duplicationStrategy = {
+    configurationDescriptor.backendConfig.as[Option[String]]("filesystems.oss.caching.duplication-strategy").getOrElse("reference") match {
+    case "copy" => CopyCachedOutputs
+    case "reference" => UseOriginalCachedOutputs
+    case other => throw new IllegalArgumentException(s"Unrecognized caching duplication strategy: $other. Supported strategies are copy and reference. See reference.conf for more details.")
+  } }
+
+  lazy val dockerHashAccessId = DockerConfiguration.dockerHashLookupConfig.as[Option[String]]("alibabacloudcr.auth.access-id")
+  lazy val dockerHashAccessKey = DockerConfiguration.dockerHashLookupConfig.as[Option[String]]("alibabacloudcr.auth.access-key")
+  lazy val dockerHashSecurityToken = DockerConfiguration.dockerHashLookupConfig.as[Option[String]]("alibabacloudcr.auth.security-token")
+
+  val dockerCredentials/*: Option[BasicSessionCredentials]*/ = {
+    dockerHashSecurityToken match {
+      case None => {
+        for {
+          id <- dockerHashAccessId
+          key <- dockerHashAccessKey
+        } yield new BasicCredentials(id, key)
+      }
+      case _ => {
+        for {
+          id <- dockerHashAccessId
+          key <- dockerHashAccessKey
+          token <- dockerHashSecurityToken
+        } yield new BasicSessionCredentials(id, key, token)
+      }
+    }
+  }
+
   def newBcsClient: Option[BatchComputeClient] = {
     val userDefinedRegion = for {
       region <- bcsUserDefinedRegion
@@ -115,5 +147,4 @@ final class BcsConfiguration(val configurationDescriptor: BackendConfigurationDe
 
     oldBcsClient
   }
-
 }
