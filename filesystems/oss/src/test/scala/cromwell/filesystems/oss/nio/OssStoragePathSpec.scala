@@ -12,7 +12,7 @@ class OssStoragePathSpec extends TestKitSuite with OssNioUtilSpec {
 
     val path = OssStoragePath.getPath(mockFileSystem, fileName)
 
-    path.bucket shouldBe bucket
+    path.bucket shouldBe mockBucket
 
     path.toAbsolutePath.toString shouldBe fileName
   }
@@ -59,7 +59,7 @@ class OssStoragePathSpec extends TestKitSuite with OssNioUtilSpec {
   it should s"has right pathAsString" in {
     val path = OssStoragePath.getPath(mockFileSystem, fileName)
 
-    path.pathAsString shouldEqual s"oss://$bucket$fileName"
+    path.pathAsString shouldEqual s"oss://$mockBucket$fileName"
   }
 
 }

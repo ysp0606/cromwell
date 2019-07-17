@@ -7,7 +7,7 @@ class OssStorageFileSystemSpec extends TestKitSuite with OssNioUtilSpec {
 
   it should "get right path" in {
     val ossPath = mockFileSystem.getPath("/test-file-system")
-    ossPath.bucket shouldEqual(bucket)
+    ossPath.bucket shouldEqual(mockBucket)
     ossPath.key shouldEqual("test-file-system")
   }
 

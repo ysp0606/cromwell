@@ -112,9 +112,10 @@ object OssPathBuilder {
 final case class OssPathBuilder(ossStorageConfiguration: OssStorageConfiguration) extends PathBuilder {
   def build(string: String): Try[OssPath] = {
     validateOssPath(string) match {
-      case ValidFullOssPath(bucket, path) =>
+      case ValidFullOssPath(_, path) =>
         Try {
-          val ossStorageFileSystem = OssStorageFileSystem(bucket, ossStorageConfiguration)
+          val ossStorageFileSystem = OssStorageFileSystemProvider.formConfig(ossStorageConfiguration)
+            .getFileSystem(URI.create(UrlEscapers.urlFragmentEscaper().escape(string)), System.getenv)
           OssPath(ossStorageFileSystem.getPath(path), ossStorageFileSystem.provider.ossClient)
         }
       case PossiblyValidRelativeOssPath => Failure(new IllegalArgumentException(s"$string does not have a oss scheme"))
