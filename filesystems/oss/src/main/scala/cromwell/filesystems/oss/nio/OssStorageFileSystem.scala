@@ -20,8 +20,7 @@ object OssStorageFileSystem {
   val BASIC_VIEW = "basic"
 
   def apply(provider: OssStorageFileSystemProvider, bucket: String, config: OssStorageConfiguration): OssStorageFileSystem = {
-    val res = new OssStorageFileSystem(bucket, config)
-    res.internalProvider = provider
+    val res = new OssStorageFileSystem(provider, bucket, config)
     res
   }
 }
@@ -99,12 +98,7 @@ trait OssStorageConfiguration {
 
 case class DefaultOssStorageConfiguration(endpoint: String, accessId: String, accessKey: String, securityToken: Option[String] = None) extends OssStorageConfiguration {}
 
-case class OssStorageFileSystem(bucket: String, config: OssStorageConfiguration) extends FileSystem {
-
-  var internalProvider: OssStorageFileSystemProvider = OssStorageFileSystemProvider(config)
-
-  override def provider: OssStorageFileSystemProvider = internalProvider
-
+case class OssStorageFileSystem(provider: OssStorageFileSystemProvider, bucket: String, config: OssStorageConfiguration) extends FileSystem {
   override def getPath(first: String, more: String*): OssStoragePath = OssStoragePath.getPath(this, first, more: _*)
 
   override def close(): Unit = {

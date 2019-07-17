@@ -1,8 +1,10 @@
 package cromwell.filesystems.oss.nio
 
 import java.io.ByteArrayInputStream
+import java.net.URI
 
 import com.aliyun.oss.OSSClient
+import com.google.common.net.UrlEscapers
 import org.scalatest._
 import org.scalatest.mockito.MockitoSugar
 
@@ -54,12 +56,20 @@ trait OssNioUtilSpec extends FlatSpecLike with MockitoSugar with Matchers {
     OssStorageConfiguration.parseMap(ossInfo)
   } getOrElse(throw new IllegalArgumentException("you should supply oss info before testing oss related operation"))
 
-  lazy val mockOssConf: OssStorageConfiguration = new DefaultOssStorageConfiguration("mock-endpoint", "mock-id", "mock-key", None)
+  val mockEndpoint = "mock-endpoint"
+  val mockAccessId = "mock-access-id"
+  val mockAccessKey = "mock-access-key"
+  lazy val mockOssConf: OssStorageConfiguration = new DefaultOssStorageConfiguration(mockEndpoint, mockAccessId, mockAccessKey, None)
+  val mockBucket = "mock-bucket"
+  val mockFile = "mock-dir/mock-file"
 
-  lazy val ossProvider = OssStorageFileSystemProvider(ossConf)
-  lazy val mockProvider = OssStorageFileSystemProvider(mockOssConf)
-  lazy val ossFileSystem = OssStorageFileSystem(bucket, ossConf)
-  lazy val mockFileSystem = OssStorageFileSystem(bucket, mockOssConf)
+  lazy val ossProvider = OssStorageFileSystemProvider.formConfig(ossConf)
+  lazy val mockProvider = OssStorageFileSystemProvider.formConfig(mockOssConf)
+  lazy val ossFilesystemString = s"oss://$DEFAULT_BUCKET/$mockFile"
+  lazy val ossFileSystem = ossProvider.getFileSystem(URI.create(UrlEscapers.urlFragmentEscaper().escape(ossFilesystemString)), System.getenv)
+
+  lazy val mockFilesystemString = s"oss://$mockBucket/$DEFAULT_FILE_NAME"
+  val mockFileSystem = mockProvider.getFileSystem(URI.create(UrlEscapers.urlFragmentEscaper().escape(mockFilesystemString)), System.getenv)
   val fileName = DEFAULT_FILE_NAME
   val fileContent = DEFAULT_CONTENT
 

@@ -19,7 +19,7 @@ class OssStorageFileSystemProviderSpec extends TestKitSuite with OssNioUtilSpec 
   }
 
   it should "work when creating new file system" in {
-    val fs = mockProvider.newFileSystem(URI.create(s"oss://$bucket"), mockOssConf.toMap.asJava)
+    val fs = mockProvider.getFileSystem(URI.create(s"oss://$bucket"), System.getenv)
     fs.bucket shouldEqual bucket
 
     an [IllegalArgumentException] should be thrownBy ossProvider.newFileSystem(URI.create(s"oss://"), mockOssConf.toMap.asJava)

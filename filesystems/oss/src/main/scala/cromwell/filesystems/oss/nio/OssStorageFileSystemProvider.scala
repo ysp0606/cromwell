@@ -9,17 +9,48 @@ import java.nio.file.spi.FileSystemProvider
 import java.util
 
 import com.aliyun.oss.OSSClient
-import com.aliyun.oss.model.{GenericRequest, ListObjectsRequest}
+import com.aliyun.oss.model.{CompleteMultipartUploadRequest, GenericRequest, InitiateMultipartUploadRequest}
+import com.aliyun.oss.model.{InitiateMultipartUploadResult, ListObjectsRequest, ObjectMetadata, PartETag}
+import com.aliyun.oss.model.{UploadPartCopyRequest, UploadPartCopyResult}
 import com.google.common.collect.AbstractIterator
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Set
 import collection.mutable.ArrayBuffer
 
+object OssStorageFileSystemProvider{
+  val maxCopySize: Long = 1 * 1024 * 1024 * 1024//1GB
+  val partSize: Long = 10 * 1024 * 1024//10MB
+  var providers: Map[String, OssStorageFileSystemProvider] = Map()
+  var filesystems: Map[String, OssStorageFileSystem] = Map()
+
+  def formConfig(config: OssStorageConfiguration): OssStorageFileSystemProvider = {
+    val key = getProviderKey(config)
+    if (providers.contains(key)) {
+      providers.apply(key)
+    } else {
+      val provider = new OssStorageFileSystemProvider(config)
+      providers += (key -> provider)
+      provider
+    }
+  }
+
+  def getProviderKey(config: OssStorageConfiguration): String = {
+    val accessKey = config.accessId
+    if (accessKey == null) {
+      throw new IllegalArgumentException("AccessKey is null")
+    }
+    val endPoint = config.endpoint
+    if (endPoint == null) {
+      throw new IllegalArgumentException("AccessKey is null")
+    }
+
+    (accessKey + "@" + endPoint)
+  }
+}
 
 final case class OssStorageFileSystemProvider(config: OssStorageConfiguration) extends FileSystemProvider {
   def ossClient: OSSClient = config.newOssClient()
-
   class PathIterator(ossClient: OSSClient, prefix: OssStoragePath, filter: DirectoryStream.Filter[_ >: Path]) extends AbstractIterator[Path] {
     var nextMarker: Option[String] = None
 
@@ -93,13 +124,67 @@ final case class OssStorageFileSystemProvider(config: OssStorageConfiguration) e
     if (uri.getPort != -1) {
       throw new IllegalArgumentException(s"Port is not permitted")
     }
+    val key = getFileSystemKey(bucket, config)
+    if (OssStorageFileSystemProvider.filesystems.contains(key)) {
+      throw new FileSystemAlreadyExistsException("File system " + uri.getScheme + ':' + key + " already exists")
+    }
+    // create the filesystem
+    val fileSystem = OssStorageFileSystem(this, bucket, config)
+    OssStorageFileSystemProvider.filesystems += (key -> fileSystem)
+    return fileSystem
+  }
 
-    OssStorageFileSystem(this, bucket, OssStorageConfiguration.parseMap(env.asScala.toMap))
+  def getFileSystem(uri: URI, env: java.util.Map[String, _]): OssStorageFileSystem = {
+    if (uri.getScheme != getScheme) {
+      throw new IllegalArgumentException(s"Schema ${uri.getScheme} not match")
+    }
+
+    val bucket = uri.getHost
+    if (bucket.isEmpty) {
+      throw new IllegalArgumentException(s"Bucket is empty")
+    }
+
+    val key = getFileSystemKey(bucket)
+    if (OssStorageFileSystemProvider.filesystems.contains(key)) {
+      OssStorageFileSystemProvider.filesystems.apply(key)
+    } else {
+      newFileSystem(uri, env)
+    }
   }
 
   override def getFileSystem(uri: URI): OssStorageFileSystem = {
-    newFileSystem(uri, config.toMap.asJava)
+    if (uri.getScheme != getScheme) {
+      throw new IllegalArgumentException(s"Schema ${uri.getScheme} not match")
+    }
+
+    val bucket = uri.getHost
+    if (bucket.isEmpty) {
+      throw new IllegalArgumentException(s"Bucket is empty")
+    }
+
+    val key = getFileSystemKey(bucket)
+    if (OssStorageFileSystemProvider.filesystems.contains(key)) {
+      return OssStorageFileSystemProvider.filesystems.apply(key)
+    }
+
+    throw new FileSystemNotFoundException("OSS filesystem not yet created. Use newFileSystem() instead")
   }
+
+  protected def getFileSystemKey(bucket: String, config: OssStorageConfiguration): String = {
+
+    val accessKey = config.accessId
+    if (accessKey == null) {
+      throw new IllegalArgumentException("AccessKey is null")
+    }
+    val endPoint = config.endpoint
+    if (endPoint == null) {
+      throw new IllegalArgumentException("AccessKey is null")
+    }
+
+    (accessKey + "@" + bucket + "@" + endPoint)
+  }
+
+  private def getFileSystemKey(bucket: String):String = getFileSystemKey(bucket, config)
 
   override def getPath(uri: URI): OssStoragePath = {
     OssStoragePath.getPath(getFileSystem(uri), uri.getPath)
@@ -206,10 +291,18 @@ final case class OssStorageFileSystemProvider(config: OssStorageConfiguration) e
       return
     }
 
-    val _ = OssStorageRetry.from(
-      () => ossClient.copyObject(srcOssPath.bucket, srcOssPath.key, targetOssPath.bucket, targetOssPath.key)
-    )
-
+    val objectMetadata: ObjectMetadata = ossClient.getObjectMetadata (srcOssPath.bucket, srcOssPath.key)
+    // get object length
+    val contentLength: Long = objectMetadata.getContentLength
+    if (contentLength < OssStorageFileSystemProvider.maxCopySize ) {
+      val _ = OssStorageRetry.from(
+        () => ossClient.copyObject(srcOssPath.bucket, srcOssPath.key, targetOssPath.bucket, targetOssPath.key)
+      )
+    } else {
+      val _ = OssStorageRetry.from(
+        () => copyLargeObject(srcOssPath, targetOssPath)
+      )
+    }
   }
 
   override def move(source: Path, target: Path, options: CopyOption*): Unit = {
@@ -318,5 +411,49 @@ final case class OssStorageFileSystemProvider(config: OssStorageConfiguration) e
     )
 
     listResult.getObjectSummaries.iterator().hasNext
+  }
+
+  private[this] def copyLargeObject(src: OssStoragePath, dst: OssStoragePath): Unit = {
+
+    val objectMetadata: ObjectMetadata = ossClient.getObjectMetadata (src.bucket, src.key)
+    // get object length
+    val contentLength: Long = objectMetadata.getContentLength
+
+    // set part size 10MB。
+    val partSize: Long = OssStorageFileSystemProvider.partSize
+
+    // get the total part count
+    var partCount: Int = (contentLength / partSize).toInt
+    if (contentLength % partSize != 0) {
+      partCount += 1
+    }
+
+    // init copy task
+    val initiateMultipartUploadRequest: InitiateMultipartUploadRequest = new InitiateMultipartUploadRequest (dst.bucket, dst.key)
+    val initiateMultipartUploadResult: InitiateMultipartUploadResult = ossClient.initiateMultipartUpload (initiateMultipartUploadRequest)
+    val uploadId: String = initiateMultipartUploadResult.getUploadId
+
+    // copy by part
+    val partETags: util.List[PartETag] = new util.ArrayList[PartETag]
+    var i: Int = 0
+    while (i < partCount) {
+      // get the part size
+      val skipBytes: Long = partSize * i
+      val size: Long = if (partSize < contentLength - skipBytes) partSize else (contentLength - skipBytes)
+      // create and set UploadPartCopyRequest
+      val uploadPartCopyRequest: UploadPartCopyRequest = new UploadPartCopyRequest(src.bucket, src.key, dst.bucket, dst.key)
+      uploadPartCopyRequest.setUploadId(uploadId)
+      uploadPartCopyRequest.setPartSize(size)
+      uploadPartCopyRequest.setBeginIndex(skipBytes)
+      uploadPartCopyRequest.setPartNumber(i + 1)
+      val uploadPartCopyResult: UploadPartCopyResult = ossClient.uploadPartCopy(uploadPartCopyRequest)
+      // save the ETags
+      partETags.add(uploadPartCopyResult.getPartETag)
+      i += 1
+    }
+
+    // commit the upload request
+    val completeMultipartUploadRequest: CompleteMultipartUploadRequest = new CompleteMultipartUploadRequest (dst.bucket, dst.key, uploadId, partETags)
+    val _ = ossClient.completeMultipartUpload(completeMultipartUploadRequest)
   }
 }
