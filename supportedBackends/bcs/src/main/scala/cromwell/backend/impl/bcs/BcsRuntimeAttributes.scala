@@ -331,7 +331,7 @@ class DockerTagValidation(override val config: Option[Config]) extends RuntimeAt
   override def validateValue: PartialFunction[WomValue, ErrorOr[BcsDocker]] = {
     case WomString(s) => BcsDocker.parse(s.toString) match {
       case Success(docker: BcsDocker) => docker.validNel
-      case _ => s"docker must be 'dockerImage dockerPath' like".invalidNel
+      case Failure(e) => s"${e.getMessage}".invalidNel
     }
   }
 }

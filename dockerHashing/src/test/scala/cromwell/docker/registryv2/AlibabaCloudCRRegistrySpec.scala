@@ -1,4 +1,4 @@
-package cromwell.docker.registryv2.flows.alibabacloudcrregistry
+package cromwell.docker.registryv2.flows.alibabacloudcr
 
 import com.aliyuncs.auth.{BasicCredentials, BasicSessionCredentials}
 import cromwell.docker.DockerInfoActor.{DockerInfoContext, DockerInfoFailedResponse, DockerInfoSuccessResponse, DockerInformation}

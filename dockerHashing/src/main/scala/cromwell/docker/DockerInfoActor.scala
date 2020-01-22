@@ -13,7 +13,7 @@ import common.validation.Validation._
 import cromwell.core.actor.StreamIntegration.{BackPressure, StreamContext}
 import cromwell.core.{Dispatcher, DockerConfiguration}
 import cromwell.docker.DockerInfoActor._
-import cromwell.docker.registryv2.flows.alibabacloudcrregistry._
+import cromwell.docker.registryv2.flows.alibabacloudcr._
 import cromwell.docker.registryv2.DockerRegistryV2Abstract
 import cromwell.docker.registryv2.flows.dockerhub.DockerHubRegistry
 import cromwell.docker.registryv2.flows.gcr.GcrRegistry

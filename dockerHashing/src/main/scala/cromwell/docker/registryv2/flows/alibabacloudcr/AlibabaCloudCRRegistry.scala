@@ -1,4 +1,4 @@
-package cromwell.docker.registryv2.flows.alibabacloudcrregistry
+package cromwell.docker.registryv2.flows.alibabacloudcr
 
 import cats.effect.IO
 import com.aliyuncs.DefaultAcsClient
@@ -22,6 +22,7 @@ class AlibabaCloudCRRegistry(config: DockerRegistryConfig) extends DockerRegistr
   val HashAlg = "sha256"
   val regionPattern = """[^\s]+"""
   val validAlibabaCloudCRHosts: Regex = s"""registry.($regionPattern).aliyuncs.com""".r
+  val validAlibabaCloudCRVPCHosts: Regex = s"""registry-vpc.($regionPattern).aliyuncs.com""".r
 
   val validCrEndpoint: Regex = s"""cr.($regionPattern).aliyuncs.com""".r
   val validCrVpcEndpoint: Regex = s"""cr-vpc.($regionPattern).aliyuncs.com""".r
@@ -31,6 +32,7 @@ class AlibabaCloudCRRegistry(config: DockerRegistryConfig) extends DockerRegistr
     host.exists {
       _ match {
         case validAlibabaCloudCRHosts(_) => true
+        case validAlibabaCloudCRVPCHosts(_) => true
         case _ => false
       }
     }
@@ -94,7 +96,7 @@ class AlibabaCloudCRRegistry(config: DockerRegistryConfig) extends DockerRegistr
     }
   }
 
-  private[alibabacloudcrregistry] def getAliyunCredentialFromContext(context: DockerInfoContext): Option[AlibabaCloudCredentials] = {
+  private[alibabacloudcr] def getAliyunCredentialFromContext(context: DockerInfoContext): Option[AlibabaCloudCredentials] = {
     context.credentials find {
       _.isInstanceOf[AlibabaCloudCredentials]
     } match {
@@ -105,7 +107,7 @@ class AlibabaCloudCRRegistry(config: DockerRegistryConfig) extends DockerRegistr
   }
 
   //cr.cn-beijing.aliyuncs.com  or  cr-vpc.cn-beijing.aliyuncs.com
-  private[alibabacloudcrregistry] def getAliyunEndpointFromContext(context: DockerInfoContext): Option[String] = {
+  private[alibabacloudcr] def getAliyunEndpointFromContext(context: DockerInfoContext): Option[String] = {
     context.credentials collectFirst {
       case endpoint: String if (isValidAlibabaCloudCREndpoint(endpoint)) => endpoint
     }
@@ -119,7 +121,7 @@ class AlibabaCloudCRRegistry(config: DockerRegistryConfig) extends DockerRegistr
     }
   }
 
-  private[alibabacloudcrregistry] def extractDigestFromBody(jsObject: JsObject, dockerHashContext: DockerInfoContext): DockerInfoResponse = {
+  private[alibabacloudcr] def extractDigestFromBody(jsObject: JsObject, dockerHashContext: DockerInfoContext): DockerInfoResponse = {
     val tags = jsObject.fields.get("data") match {
       case Some(data) => data.asJsObject().convertTo[Map[String, JsValue]].get("tags") match {
         case Some(tag) => tag.convertTo[Seq[JsObject]]
