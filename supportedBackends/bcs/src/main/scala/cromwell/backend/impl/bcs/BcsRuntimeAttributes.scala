@@ -1,5 +1,7 @@
 package cromwell.backend.impl.bcs
 
+import cats.instances.list._
+import cats.syntax.traverse._
 import cats.data.Validated._
 import cats.syntax.apply._
 import cats.syntax.validated._
@@ -37,6 +39,7 @@ final case class BcsRuntimeAttributes(continueOnReturnCode: ContinueOnReturnCode
                                 imageId: Option[String],
                                 systemDisk: Option[BcsSystemDisk],
                                 dataDisk: Option[BcsDataDisk],
+                                disks: Option[Seq[BcsDisk]],
                                 reserveOnFail: Option[Boolean],
                                 autoReleaseJob: Option[Boolean],
                                 timeout: Option[Int],
@@ -61,8 +64,11 @@ object BcsRuntimeAttributes {
   val DockerKey = "docker"
   val SystemDiskKey = "systemDisk"
   val DataDiskKey = "dataDisk"
+  val DisksKey = "disks"
   val VpcKey = "vpc"
   val TagKey = "tag"
+
+  private val DisksDefaultValue = WomString(s"${BcsSystemDisk.Name} 40 cloud_efficiency")
 
   private def failOnStderrValidation(runtimeConfig: Option[Config]) = FailOnStderrValidation.default(runtimeConfig)
 
@@ -77,6 +83,9 @@ object BcsRuntimeAttributes {
 
   private def systemDiskValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[BcsSystemDisk] = SystemDiskValidation.optionalWithDefault(runtimeConfig)
   private def dataDiskValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[BcsDataDisk] = DataDiskValidation.optionalWithDefault(runtimeConfig)
+
+  private def disksValidation(runtimeConfig: Option[Config]): RuntimeAttributesValidation[Seq[BcsDisk]] = DisksValidation
+    .withDefault(DisksValidation.configDefaultWomValue(runtimeConfig) getOrElse DisksDefaultValue)
 
   private def reserveOnFailValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[Boolean] = ReserveOnFailValidation.optionalWithDefault(runtimeConfig)
 
@@ -103,6 +112,7 @@ object BcsRuntimeAttributes {
       clusterValidation(backendRuntimeConfig),
       systemDiskValidation(backendRuntimeConfig),
       dataDiskValidation(backendRuntimeConfig),
+      disksValidation(backendRuntimeConfig),
       reserveOnFailValidation(backendRuntimeConfig),
       autoReleaseJobValidation(backendRuntimeConfig),
       timeoutValidation(backendRuntimeConfig),
@@ -138,7 +148,7 @@ object BcsRuntimeAttributes {
     val docker: Option[BcsDocker] = RuntimeAttributesValidation.extractOption(dockerValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val systemDisk: Option[BcsSystemDisk] = RuntimeAttributesValidation.extractOption(systemDiskValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val dataDisk: Option[BcsDataDisk] = RuntimeAttributesValidation.extractOption(dataDiskValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
-
+    val disks: Option[Seq[BcsDisk]] = RuntimeAttributesValidation.extractOption(disksValidation(backendRuntimeConfig), validatedRuntimeAttributes)
     val reserveOnFail: Option[Boolean] = RuntimeAttributesValidation.extractOption(reserveOnFailValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val autoReleaseJob: Option[Boolean] = RuntimeAttributesValidation.extractOption(autoReleaseJobValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val timeout: Option[Int] = RuntimeAttributesValidation.extractOption(timeoutValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
@@ -158,6 +168,7 @@ object BcsRuntimeAttributes {
       imageId,
       systemDisk,
       dataDisk,
+      disks,
       reserveOnFail,
       autoReleaseJob,
       timeout,
@@ -324,6 +335,41 @@ class DataDiskValidation(override val config: Option[Config]) extends RuntimeAtt
       case _ => s"system disk should be string like 'cloud 40 /home/data/'".invalidNel
     }
   }
+}
+
+object DisksValidation extends RuntimeAttributesValidation[Seq[BcsDisk]] {
+  override def key: String = BcsRuntimeAttributes.DisksKey
+
+  override def coercion: Traversable[WomType] = Set(WomStringType, WomArrayType(WomStringType))
+
+  override protected def validateValue: PartialFunction[WomValue, ErrorOr[Seq[BcsDisk]]] = {
+    case WomString(value) => validateLocalDisks(value.split(",\\s*").toSeq)
+    case WomArray(womType, values) if womType.memberType == WomStringType =>
+      validateLocalDisks(values.map(_.valueString))
+  }
+
+  private def validateLocalDisks(disks: Seq[String]): ErrorOr[Seq[BcsDisk]] = {
+    val diskNels: ErrorOr[Seq[BcsDisk]] = disks.toList.traverse[ErrorOr, BcsDisk](validateLocalDisk)
+    val defaulted: ErrorOr[Seq[BcsDisk]] = addDefault(diskNels)
+    defaulted
+  }
+
+  private def validateLocalDisk(disk: String): ErrorOr[BcsDisk] = {
+    BcsDisk.parseStandard(disk) match {
+      case scala.util.Success(bcsDisk) => bcsDisk.validNel
+      case scala.util.Failure(ex) => ex.getMessage.invalidNel
+    }
+  }
+
+  private def addDefault(disksNel: ErrorOr[Seq[BcsDisk]]): ErrorOr[Seq[BcsDisk]] = {
+    disksNel map {
+      case disks if disks.exists(_.name == BcsSystemDisk.Name) => disks
+      case disks => disks :+ BcsSystemDisk.Default
+    }
+  }
+
+  override protected def missingValueMessage: String =
+    s"Expecting $key runtime attribute to be a comma separated String or Array[String]"
 }
 
 object DockerTagValidation {

@@ -73,6 +73,34 @@ final case class BcsJob(name: String,
     dataDisk
   }
 
+  private[bcs] def standardDisks = runtime.disks map { disk =>
+    val systemDisk = new SystemDisk
+    val dataDisk = new DataDisk
+
+    def setDisk(d: BcsDisk) = {
+      d match {
+        case _: BcsSystemDisk =>
+          systemDisk.setType(d.diskType)
+          systemDisk.setSize(d.sizeInGB)
+          lazyDisks.setSystemDisk(systemDisk)
+        case dDisk: BcsDataDisk =>
+          dataDisk.setType(d.diskType)
+          dataDisk.setMountPoint(dDisk.mountPoint)
+          dataDisk.setSize(d.sizeInGB)
+          lazyDisks.setDataDisk(dataDisk)
+      }
+    }
+
+    disk map {d => setDisk(d)}
+  }
+
+  val defaultSystemDisk = {
+    val disk = new SystemDisk
+    disk.setType(BcsSystemDisk.Default.diskType)
+    disk.setSize( BcsSystemDisk.Default.sizeInGB)
+    disk
+  }
+
   // XXX: maybe more elegant way to reduce two options?
   private[bcs] def disks: Option[Disks] = {
     (systemDisk, dataDisk) match {
@@ -86,7 +114,10 @@ final case class BcsJob(name: String,
       case (None, Some(data)) =>
         lazyDisks.setDataDisk(data)
         Some(lazyDisks)
-      case (None, None) => None
+      case (None, None) =>
+        lazyDisks.setSystemDisk(defaultSystemDisk)
+        standardDisks
+        Some(lazyDisks)
     }
   }
 
