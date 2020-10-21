@@ -3,11 +3,15 @@ package cromwell.backend.impl.bcs
 import cats.data.Validated._
 import cats.syntax.apply._
 import cats.syntax.validated._
+import com.aliyun.batchcompute2.models.{MountPoint, OSSVolumeSource, Volume}
 import com.aliyuncs.batchcompute.pojo.v20151111.MountEntry
 import common.exception.MessageAggregation
 import common.validation.ErrorOr._
 import cromwell.backend.impl.bcs.BcsMount.PathType
 import cromwell.core.path.{Path, PathBuilder, PathFactory}
+import cromwell.filesystems.oss.OssPathBuilder.{OssPathValidation, ValidFullOssPath}
+import cromwell.filesystems.oss.{OssPath, OssPathBuilder}
+import wom.values._
 
 import scala.util.{Success, Try}
 import scala.util.matching.Regex
@@ -20,15 +24,39 @@ object BcsMount {
       case Left(p) =>
         p.pathAsString
       case Right(s) =>
-        return s
+        s
     }
   }
 
-  val supportFileSystemTypes = List("oss", "nas", "smb", "lustre").mkString("|")
+  def GetOssBucket(p: PathType): String = {
+    p match {
+      case Left(p: OssPath) =>
+        p.bucket
+      case Left(_) => throw new Exception(s"Invalid oss path:${p.toString}")
+      case Right(s) => OssPathBuilder.validateOssPath(s) match {
+        case ValidFullOssPath(b, _) => b
+        case _: OssPathValidation => throw new Exception(s"Invalid oss path:$s")
+      }
+    }
+  }
+
+  def GetOssKey(p: PathType): String = {
+    p match {
+      case Left(p: OssPath) =>
+        p.key
+      case Left(_) => throw new Exception(s"Invalid oss path:${p.toString}")
+      case Right(s) => OssPathBuilder.validateOssPath(s) match {
+        case ValidFullOssPath(_, k) => k
+        case _: OssPathValidation => throw new Exception(s"Invalid oss path:$s")
+      }
+    }
+  }
+
+  val supportFileSystemTypes: String = List("oss", "nas", "smb", "lustre").mkString("|")
 
   var pathBuilders: List[PathBuilder] = List()
 
-  val remotePrefix = s"""(?:$supportFileSystemTypes)""" + """://[^\s]+"""
+  val remotePrefix: String = s"""(?:$supportFileSystemTypes)""" + """://[^\s]+"""
   val localPath = """/[^\s]+"""
   val writeSupport = """true|false"""
 
@@ -91,6 +119,8 @@ trait BcsMount {
   var writeSupport: Boolean
 
   def toBcsMountEntry: MountEntry
+  def toBcsVolume: Volume
+  def toBcsMountPoint: MountPoint
 }
 
 final case class BcsInputMount(var src: PathType, var dest: PathType, var writeSupport: Boolean) extends BcsMount {
@@ -108,6 +138,26 @@ final case class BcsInputMount(var src: PathType, var dest: PathType, var writeS
     entry
   }
 
+  val volumeName: String = s"cromwell-input-${dest.toString.md5Sum}"
+
+  def toBcsVolume: Volume = {
+    val ossV = new OSSVolumeSource
+    ossV.setBucket(BcsMount.GetOssBucket(src))
+    ossV.setPrefix(BcsMount.GetOssKey(src))
+    ossV.setReadOnly(true)
+
+    val volume = new Volume
+    volume.setName(volumeName)
+    volume.setOSS(ossV)
+    volume
+  }
+
+  def toBcsMountPoint: MountPoint = {
+    val mountPoint = new MountPoint
+    mountPoint.setName(volumeName)
+    mountPoint.setMountPath(dest.toString)
+    mountPoint
+  }
 }
 final case class BcsOutputMount(var src: PathType, var dest: PathType, var writeSupport: Boolean) extends BcsMount {
   def toBcsMountEntry: MountEntry = {
@@ -123,5 +173,26 @@ final case class BcsOutputMount(var src: PathType, var dest: PathType, var write
     entry.setWriteSupport(writeSupport)
 
     entry
+  }
+
+  val volumeName: String = s"cromwell-input-${src.toString.md5Sum}"
+
+  def toBcsVolume: Volume = {
+    val ossV = new OSSVolumeSource
+    ossV.setBucket(BcsMount.GetOssBucket(dest))
+    ossV.setPrefix(BcsMount.GetOssKey(dest))
+    ossV.setReadOnly(false)
+
+    val volume = new Volume
+    volume.setName(volumeName)
+    volume.setOSS(ossV)
+    volume
+  }
+
+  def toBcsMountPoint: MountPoint = {
+    val mountPoint = new MountPoint
+    mountPoint.setName(volumeName)
+    mountPoint.setMountPath(src.toString)
+    mountPoint
   }
 }

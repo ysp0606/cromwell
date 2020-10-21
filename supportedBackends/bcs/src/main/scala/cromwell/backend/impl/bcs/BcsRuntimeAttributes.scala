@@ -10,7 +10,11 @@ import common.validation.ErrorOr._
 import cromwell.backend.impl.bcs.BcsClusterIdOrConfiguration.BcsClusterIdOrConfiguration
 import cromwell.backend.standard.StandardValidatedRuntimeAttributesBuilder
 import cromwell.backend.validation._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import net.ceedubs.ficus.Ficus._
+import wom.RuntimeAttributesKeys
+import wom.format.MemorySize
 import wom.types._
 import wom.values._
 
@@ -30,23 +34,27 @@ trait OptionalWithDefault[A] {
 }
 
 final case class BcsRuntimeAttributes(continueOnReturnCode: ContinueOnReturnCode,
-                                dockerTag: Option[BcsDocker],
-                                docker: Option[BcsDocker],
-                                failOnStderr: Boolean,
-                                mounts: Option[Seq[BcsMount]],
-                                userData: Option[Seq[BcsUserData]],
-                                cluster: Option[BcsClusterIdOrConfiguration],
-                                imageId: Option[String],
-                                systemDisk: Option[BcsSystemDisk],
-                                dataDisk: Option[BcsDataDisk],
-                                disks: Option[Seq[BcsDisk]],
-                                reserveOnFail: Option[Boolean],
-                                autoReleaseJob: Option[Boolean],
-                                timeout: Option[Int],
-                                verbose: Option[Boolean],
-                                vpc: Option[BcsVpcConfiguration],
-                                tag: Option[String],
-                                isv:Option[String])
+                                      dockerTag: Option[BcsDocker],
+                                      docker: Option[BcsDocker],
+                                      failOnStderr: Boolean,
+                                      mounts: Option[Seq[BcsMount]],
+                                      userData: Option[Seq[BcsUserData]],
+                                      cluster: Option[BcsClusterIdOrConfiguration],
+                                      imageId: Option[String],
+                                      instanceType: Option[String],
+                                      systemDisk: Option[BcsSystemDisk],
+                                      dataDisk: Option[BcsDataDisk],
+                                      disks: Option[Seq[BcsDisk]],
+                                      reserveOnFail: Option[Boolean],
+                                      autoReleaseJob: Option[Boolean],
+                                      timeout: Option[Int],
+                                      verbose: Option[Boolean],
+                                      vpc: Option[BcsVpcConfiguration],
+                                      tag: Option[String],
+				                              isv:Option[String],
+                                      cpu: Option[Int Refined Positive],
+                                      memory: Option[MemorySize],
+                                      project: Option[String])
 
 object BcsRuntimeAttributes {
 
@@ -67,6 +75,8 @@ object BcsRuntimeAttributes {
   val DisksKey = "disks"
   val VpcKey = "vpc"
   val TagKey = "tag"
+  val MemoryDefaultValue = "2 GB"
+
 
   private val DisksDefaultValue = WomString(s"${BcsSystemDisk.Name} 40 cloud_efficiency")
 
@@ -105,6 +115,19 @@ object BcsRuntimeAttributes {
 
   private def isvValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[String] = IsvValidation.optionalWithDefault(runtimeConfig)
 
+  private def instanceTypeValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[String] = InstanceTypeValidation.optionalWithDefault(runtimeConfig)
+
+  private def cpuValidation(runtimeConfig: Option[Config]): RuntimeAttributesValidation[Int Refined Positive] = CpuValidation.instance
+    .withDefault(CpuValidation.configDefaultWomValue(runtimeConfig) getOrElse CpuValidation.defaultMin)
+
+  private def memoryValidation(runtimeConfig: Option[Config]): RuntimeAttributesValidation[MemorySize] = {
+    MemoryValidation.withDefaultMemory(
+      RuntimeAttributesKeys.MemoryKey,
+      MemoryValidation.configDefaultString(RuntimeAttributesKeys.MemoryKey, runtimeConfig) getOrElse MemoryDefaultValue)
+  }
+
+  private def projectValidation(runtimeConfig: Option[Config]): OptionalRuntimeAttributesValidation[String] = ProjectValidation.optionalWithDefault(runtimeConfig)
+
   def runtimeAttributesBuilder(backendRuntimeConfig: Option[Config]): StandardValidatedRuntimeAttributesBuilder = {
     val defaults = StandardValidatedRuntimeAttributesBuilder.default(backendRuntimeConfig).withValidation(
       mountsValidation(backendRuntimeConfig),
@@ -121,6 +144,10 @@ object BcsRuntimeAttributes {
       tagValidation(backendRuntimeConfig),
       imageIdValidation(backendRuntimeConfig),
       isvValidation(backendRuntimeConfig),
+      instanceTypeValidation(backendRuntimeConfig),
+      cpuValidation(backendRuntimeConfig),
+      memoryValidation(backendRuntimeConfig),
+      projectValidation(backendRuntimeConfig)
     )
 
     // TODO: docker trips up centaur testing, for now https://github.com/broadinstitute/cromwell/issues/3518
@@ -144,6 +171,7 @@ object BcsRuntimeAttributes {
 
     val cluster: Option[BcsClusterIdOrConfiguration] = RuntimeAttributesValidation.extractOption(clusterValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val imageId: Option[String] = RuntimeAttributesValidation.extractOption(imageIdValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
+    val instanceType: Option[String] = RuntimeAttributesValidation.extractOption(instanceTypeValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val dockerTag: Option[BcsDocker] = RuntimeAttributesValidation.extractOption(dockerTagValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val docker: Option[BcsDocker] = RuntimeAttributesValidation.extractOption(dockerValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val systemDisk: Option[BcsSystemDisk] = RuntimeAttributesValidation.extractOption(systemDiskValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
@@ -156,6 +184,9 @@ object BcsRuntimeAttributes {
     val vpc: Option[BcsVpcConfiguration] = RuntimeAttributesValidation.extractOption(vpcValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val tag: Option[String] = RuntimeAttributesValidation.extractOption(tagValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
     val isv: Option[String] = RuntimeAttributesValidation.extractOption(isvValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
+    val cpu: Option[Int Refined Positive] = RuntimeAttributesValidation.extractOption(cpuValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
+    val memory: Option[MemorySize] = RuntimeAttributesValidation.extractOption(memoryValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
+    val project: Option[String] = RuntimeAttributesValidation.extractOption(projectValidation(backendRuntimeConfig).key, validatedRuntimeAttributes)
 
     new BcsRuntimeAttributes(
       continueOnReturnCode,
@@ -166,6 +197,7 @@ object BcsRuntimeAttributes {
       userData,
       cluster,
       imageId,
+      instanceType,
       systemDisk,
       dataDisk,
       disks,
@@ -175,7 +207,10 @@ object BcsRuntimeAttributes {
       verbose,
       vpc,
       tag,
-      isv
+      isv,
+      cpu,
+      memory,
+      project
     )
   }
 }
@@ -438,3 +473,14 @@ class IsvValidation(override val config: Option[Config]) extends StringRuntimeAt
   override def usedInCallCaching: Boolean = true
 }
 
+object InstanceTypeValidation {
+  def optionalWithDefault(config: Option[Config]): OptionalRuntimeAttributesValidation[String] = new InstanceTypeValidation(config).optional
+}
+
+class InstanceTypeValidation(override val config: Option[Config]) extends StringRuntimeAttributesValidation("instanceType") with OptionalWithDefault[String]
+
+object ProjectValidation {
+  def optionalWithDefault(config: Option[Config]): OptionalRuntimeAttributesValidation[String] = new ProjectValidation(config).optional
+}
+
+class ProjectValidation(override val config: Option[Config]) extends StringRuntimeAttributesValidation("project") with OptionalWithDefault[String]

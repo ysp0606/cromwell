@@ -1,7 +1,8 @@
 package cromwell.backend.impl.bcs
 
+import com.aliyun.batchcompute2.Client
+import com.aliyun.batchcompute2.models.Config
 import com.aliyuncs.auth.BasicCredentials
-import com.aliyuncs.batchcompute.main.v20151111.BatchComputeClient
 import cromwell.backend.BackendConfigurationDescriptor
 import net.ceedubs.ficus.Ficus._
 import cromwell.backend.impl.bcs.callcaching.{CopyCachedOutputs, UseOriginalCachedOutputs}
@@ -53,19 +54,36 @@ final class BcsConfiguration(val configurationDescriptor: BackendConfigurationDe
     } yield new BasicCredentials(id, key)
   }
 
-  val bcsClient: Option[BatchComputeClient] = {
-    val userDefinedRegion = for {
-      region <- bcsUserDefinedRegion
+//  config = models.Config(
+//    access_key_id=self.bc_access_key_id,
+//    access_key_secret=self.bc_access_key_secret,
+//    endpoint=self.bc_host,
+//    region_id=self.region,
+//    protocol="http",
+//  type="access_key"
+//  )
+//  if self.__bcs_client is None:
+//    self.__bcs_client = Client(config)
+//  return self.__bcs_client
+
+  val bcsClient: Option[Client] = {
+    val config = for {
+      id <- bcsAccessId
+      key <- bcsAccessKey
       domain <- bcsUserDefinedDomain
+      region <- bcsUserDefinedRegion
     } yield {
-      BatchComputeClient.addEndpoint(region, domain)
-      region
+      new Config()
+        .setAccessKeyId(id)
+        .setAccessKeySecret(key)
+        .setEndpoint(domain)
+        .setRegionId(region)
+        .setProtocol("http")
+        .setType("access_key")
     }
 
     for {
-      region <- userDefinedRegion orElse bcsRegion
-      id <- bcsAccessId
-      key <- bcsAccessKey
-    } yield new BatchComputeClient(region, id, key)
+      c <- config
+    } yield new Client(c)
   }
 }

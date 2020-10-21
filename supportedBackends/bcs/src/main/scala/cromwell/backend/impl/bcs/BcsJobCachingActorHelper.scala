@@ -1,6 +1,7 @@
 package cromwell.backend.impl.bcs
 
 import akka.actor.Actor
+import com.aliyun.batchcompute2.Client
 import cromwell.backend.standard.StandardCachingActorHelper
 import cromwell.core.logging.JobLogging
 import cromwell.core.path.Path
@@ -29,7 +30,7 @@ trait BcsJobCachingActorHelper extends StandardCachingActorHelper {
     backendInitializationDataAs[BcsBackendInitializationData]
   }
 
-  def bcsClient = initializationData.bcsConfiguration.bcsClient.getOrElse(throw new RuntimeException("no bcs client available"))
+  def bcsClient: Client = initializationData.bcsConfiguration.bcsClient.getOrElse(throw new RuntimeException("no bcs client available"))
 
   lazy val bcsWorkflowPaths: BcsWorkflowPaths = workflowPaths.asInstanceOf[BcsWorkflowPaths]
 

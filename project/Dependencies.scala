@@ -5,6 +5,7 @@ object Dependencies {
   private val akkaHttpV = "10.1.12" // scala-steward:off (BA-6619)
   private val akkaV = "2.5.31" // scala-steward:off (BA-6637)
   private val aliyunBcsV = "6.2.4"
+  private val aliunBcs2V = "0.1.0-SNAPSHOT"
   private val aliyunCoreV = "4.5.10"
   private val aliyunCrV = "4.1.1"
   private val aliyunOssV = "3.11.1"
@@ -25,6 +26,7 @@ object Dependencies {
   private val commonsMathV = "3.6.1"
   private val commonsTextV = "1.9"
   private val configsV = "0.4.4"
+  private val credentialsJavaV = "0.2.4"
   private val delightRhinoSandboxV = "0.0.11"
   private val ficusV = "1.5.0"
   // The "com.vladsch.flexmark" % "flexmark-profile-pegdown" % flexmarkV dependency is an implicit, version-specific
@@ -113,6 +115,9 @@ object Dependencies {
   private val simulacrumV = "1.0.0"
   private val slf4jV = "1.7.30"
   private val slickCatsV = "0.10.2"
+  private val teaV = "1.1.2"
+  private val teaUtilV = "0.2.7"
+  private val teaRpcUtilV = "0.1.0"
   private val testContainersScalaV = "0.38.3"
 
   /* If you're about to update our Slick version:
@@ -356,6 +361,20 @@ object Dependencies {
 
   private val aliyunBatchComputeDependencies = List(
     "com.aliyun" % "aliyun-java-sdk-batchcompute" % aliyunBcsV,
+    "com.aliyun" % "tea-util" % teaUtilV,
+    "com.aliyun" % "tea-rpc-util" % teaRpcUtilV
+      exclude("javax.xml.bind", "jaxb-api")
+      exclude("com.sun.xml.bind", "jaxb-core"),
+    "com.aliyun" % "credentials-java" % credentialsJavaV
+      exclude("javax.xml.bind", "jaxb-api")
+      exclude("com.sun.xml.bind", "jaxb-core"),
+    "com.aliyun" % "tea" % teaV,
+    "com.aliyun" % "aliyun-java-sdk-batchcompute2" % aliunBcs2V
+      exclude("javax.xml.bind", "jaxb-api")
+      exclude("com.sun.xml.bind", "jaxb-core")
+      // javax.activation:activation has been replaced. https://stackoverflow.com/a/46493809
+      // The old version was causing an assembly merge conflict.
+      exclude("javax.activation", "activation"),
     "com.aliyun" % "aliyun-java-sdk-core" % aliyunCoreV
       // jaxb-api and jaxb-core and included in jaxb-impl as of 2.3.1
       // https://github.com/eclipse-ee4j/jaxb-ri/issues/1168

@@ -15,7 +15,7 @@ final case class AutoClusterConfiguration(resourceType: String,
 object BcsClusterIdOrConfiguration {
   type BcsClusterIdOrConfiguration = Either[String, AutoClusterConfiguration]
 
-  val idPattern: Regex = """(cls-[^\s]+)""".r
+  val idPattern: Regex = """(cls-[a-zA-Z0-9]+)""".r
   val resourceTypePattern = """(OnDemand|Spot)""".r
   val defaultResourceType = "OnDemand"
 

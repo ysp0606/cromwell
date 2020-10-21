@@ -1,6 +1,7 @@
 package cromwell.backend.impl.bcs
 
 import better.files.File.OpenOptions
+import com.aliyun.batchcompute2.models.{CancelJobRequest, DeleteJobRequest, GetJobRequest}
 import com.aliyuncs.batchcompute.main.v20151111.BatchComputeClient
 import com.aliyuncs.exceptions.{ClientException, ServerException}
 import common.collections.EnhancedCollections._
@@ -289,7 +290,7 @@ final class BcsAsyncBackendJobExecutionActor(override val standardParams: Standa
       case _: Finished =>
         runtimeAttributes.autoReleaseJob match {
           case Some(true) | None =>
-            bcsClient.deleteJob(runStatus.jobId)
+            bcsClient.DeleteJob(new DeleteJobRequest().setProject(project).setJobId(runStatus.jobId))
           case _ =>
         }
         true
@@ -360,18 +361,18 @@ final class BcsAsyncBackendJobExecutionActor(override val standardParams: Standa
   override def tryAbort(job: StandardAsyncJob): Unit = {
     for {
       client <- Try(initializationData.bcsConfiguration.bcsClient getOrElse(throw new RuntimeException("empty run job info ")))
-      resp <- Try(client.getJob(job.jobId))
-      status <- RunStatusFactory.getStatus(job.jobId, resp.getJob.getState)
+      resp <- Try(client.GetJob(new GetJobRequest().setProject(project).setJobId(job.jobId)))
+      status <- RunStatusFactory.getStatus(job.jobId, resp.status.state)
     } yield {
       status match {
         case _: RunStatus.TerminalRunStatus =>
           for {
-            _ <- Try(client.deleteJob(job.jobId))
+            _ <- Try(client.DeleteJob(new DeleteJobRequest().setProject(project).setJobId(job.jobId)))
           } yield job
         case _ =>
           for {
-            _ <- Try(client.stopJob(job.jobId))
-            _ <- Try(client.deleteJob(job.jobId))
+            _ <- Try(client.CancelJob(new CancelJobRequest().setProject(project).setJobId(job.jobId)))
+            _ <- Try(client.DeleteJob(new DeleteJobRequest().setProject(project).setJobId(job.jobId)))
           } yield job
       }
     }
@@ -395,6 +396,8 @@ final class BcsAsyncBackendJobExecutionActor(override val standardParams: Standa
       case _ => false
     }
   }
+
+  val project: String = runtimeAttributes.project.getOrElse("default")
 
   private[bcs] def setBcsVerbose(): Unit = {
     runtimeAttributes.verbose match {

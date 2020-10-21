@@ -10,12 +10,16 @@ import cromwell.filesystems.oss.OssPathBuilder
 import cromwell.filesystems.oss.nio.DefaultOssStorageConfiguration
 import cromwell.util.SampleWdl
 import org.scalatest.BeforeAndAfter
+import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.refineMV
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.slf4j.helpers.NOPLogger
 import spray.json.{JsObject, JsString}
 import wom.values.WomValue
+import wdl4s.parser.MemoryUnit
+import wom.format.MemorySize
 
 object BcsTestUtilSpec {
 
@@ -155,10 +159,32 @@ trait BcsTestUtilSpec extends TestKitSuite with AnyFlatSpecLike with Matchers wi
   val expectedVpc = Option(BcsVpcConfiguration(Option("192.168.0.0/16"), Option("vpc-xxxx")))
   val expectedTag = Option("jobTag")
   val expectedIsv = Option("test-isv")
+  val expectedInstanceType = Option("ecs.c5.large")
+  val expectedCpu = Option(refineMV[Positive](1))
+  val expectedMemory = Option(MemorySize(2, MemoryUnit.GB))
 
 
-  val expectedRuntimeAttributes = new BcsRuntimeAttributes(expectedContinueOnReturn, expectedDockerTag, expectedDocker, expectedFailOnStderr,  expectedMounts, expectedUserData, expectedCluster,
-    expectedImageId, expectedSystemDisk, expectedDataDisk, expectedReserveOnFail, expectedAutoRelease, expectedTimeout, expectedVerbose, expectedVpc, expectedTag, expectedIsv)
+  val expectedRuntimeAttributes = new BcsRuntimeAttributes(expectedContinueOnReturn,
+    expectedDockerTag,
+    expectedDocker,
+    expectedFailOnStderr,
+    expectedMounts,
+    expectedUserData,
+    expectedCluster,
+    expectedImageId,
+    expectedInstanceType,
+    expectedSystemDisk,
+    expectedDataDisk,
+    expectedDisks,
+    expectedReserveOnFail,
+    expectedAutoRelease,
+    expectedTimeout,
+    expectedVerbose,
+    expectedVpc,
+    expectedTag,
+    expectedIsv,
+    expectedCpu,
+    expectedMemory)
 
 
   protected def createBcsRuntimeAttributes(runtimeAttributes: Map[String, WomValue]): BcsRuntimeAttributes = {
